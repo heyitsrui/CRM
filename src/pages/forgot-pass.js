@@ -52,10 +52,10 @@ function ForgotPassword() {
       {/* NAVBAR */}
       <div className="header-nav">
         <img src="/vtic.webp" alt="VTIC Logo" className="logo-white" />
+                <a href="/" className="fp-back-nav">Back to login</a>
         <a href="https://vtic.ph" target="_blank" rel="noreferrer" className="visit-link">
           Visit Website
         </a>
-        <a href="/" className="fp-back-nav">← Back to login</a>
       </div>
 
       {/* LEFT BRANDING */}
@@ -91,7 +91,9 @@ function ForgotPassword() {
                 Please enter the email address associated with your account
               </p>
 
-              <label className="fp-label">Email</label>
+              <hr className="fp-divider" />
+
+              <label className="fp-label" style={{ marginTop: '25px' }}>Email</label>
               <input
                 type="email"
                 className="fp-input"
@@ -111,6 +113,7 @@ function ForgotPassword() {
 
               {/* Subtext */}   
               <p className="fp-subtext">OTP has sent already, Please check your email</p>
+              <hr className="fp-divider" />
 
               {/* OTP message immediately below subtext */}
               {(otpMessage && !otpCorrect) && (
