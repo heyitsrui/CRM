@@ -1,0 +1,295 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@800&display=swap');
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('https://fonts.cdnfonts.com/s/14237/GlacialIndifference-Regular.woff') format('woff');
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.login-container {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+}
+
+.bg-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+  filter: brightness(0.65);
+  pointer-events: none;
+}
+
+.header-nav {
+  position: absolute;
+  top: 40px;
+  width: 100%;
+  padding: 0 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.logo-white {
+  height: 40px;
+  filter: brightness(0) invert(1);
+}
+
+.visit-link {
+  color: white;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8%;
+  z-index: 5;
+}
+
+.branding-box {
+  color: white;
+  max-width: 550px;
+}
+
+.main-title {
+  font-family: 'League Spartan', sans-serif;
+  font-size: 4.8rem;
+  line-height: 0.9;
+  letter-spacing: -2px;
+  margin-bottom: 25px;
+}
+
+.sub-text {
+  font-family: 'Glacial Indifference', sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.login-card {
+  background: white;
+  width: 100%;
+  max-width: 580px;
+  padding: 60px;
+  border-radius: 40px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+}
+
+.card-title {
+  font-size: 3.8rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 5px;
+}
+
+.card-welcome {
+  font-family: 'Glacial Indifference', sans-serif;
+  color: #333;
+  font-size: 1.05rem;
+  margin-bottom: 30px;
+}
+
+.divider {
+  border: none;
+  border-top: 1.5px solid #000;
+  margin-bottom: 35px;
+  width: 100%;
+}
+
+.error-msg {
+  color: #e63946;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.error-bubble {
+  background: #fff0f0;
+  color: #d63031;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  border: 1px solid #ffcccc;
+  text-align: center;
+  font-weight: 600;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+}
+
+.input-group input, 
+.input-group select,
+.custom-select {
+  width: 100%;
+  padding: 16px 22px;
+  border: 1.2px solid #a0a0a0;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  margin-bottom: 15px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.custom-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+.input-group input:focus, 
+.custom-select:focus {
+  border-color: #000;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-stack input {
+  margin-bottom: 10px;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+}
+
+.forgot-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.forgot-container a {
+  text-decoration: none;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.login-btn {
+  background: #000;
+  color: white;
+  border: none;
+  padding: 22px;
+  border-radius: 60px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: transform 0.2s, background 0.3s;
+}
+
+.login-btn:hover {
+  background: #222;
+}
+
+.login-btn:active {
+  transform: scale(0.97);
+}
+
+.signup-footer {
+  text-align: center;
+  margin-top: 35px;
+  color: #444;
+}
+
+.signup-footer a {
+  color: #000;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.register-btn {
+  background: #000;
+  color: white;
+  border: none;
+  padding: 20px;
+  border-radius: 100px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+  transition: transform 0.2s, background 0.3s;
+}
+
+.register-card {
+  background: white;
+  width: 100%;
+  max-width: 520px;
+  padding: 50px;
+  border-radius: 35px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+}
+
+.register-btn:hover {
+  background: #333;
+}
+
+.register-btn:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 1100px) {
+  .content-wrapper {
+    flex-direction: column;
+    padding: 100px 20px;
+  }
+  .branding-box {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+  .main-title {
+    font-size: 3rem;
+  }
+  .header-nav {
+    padding: 20px;
+  }
+}
