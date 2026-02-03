@@ -261,12 +261,16 @@
 }
 
 .register-card {
+  flex: 1;
   background: white;
-  width: 100%;
-  max-width: 520px;
-  padding: 50px;
-  border-radius: 35px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+  height: 100%; /* Full height */
+  margin: 20px; /* Small gap from screen edge */
+  border-radius: 40px; /* Rounded corners as seen in image */
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: -10px 0 30px rgba(0,0,0,0.2);
 }
 
 .register-btn:hover {
