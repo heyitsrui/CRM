@@ -279,3 +279,35 @@
   }
 }
 
+/* OTP info below subtext */
+.fp-info {
+  background: #e3f2fd; /* light blue */
+  color: #0d47a1; /* dark blue */
+  padding: 14px 18px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.fp-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 14px 18px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+/* Proceed button fixed at bottom of card */
+.fp-btn-bottom {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+}
+
+/* Make card position relative so absolute button works */
+.fp-card-otp {
+  position: relative;
+  min-height: 400px; /* adjust for card content */
+  padding-bottom: 80px; /* space for bottom button */
+}
