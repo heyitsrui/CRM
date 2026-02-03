@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom'; // 1. Added useNavigate
+import { Link, useNavigate } from 'react-router-dom'; 
 import '../styles/create-account.css';
 import bgVideo from '../assets/video/background.mp4';
 
@@ -14,7 +14,7 @@ function CreateAccount() {
   });
   const [error, setError] = useState('');
   
-  const navigate = useNavigate(); // 2. Initialize the navigate function
+  const navigate = useNavigate(); 
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -23,6 +23,7 @@ function CreateAccount() {
 
   const validate = () => {
     const { password, confirmPassword } = formData;
+    // Requires 8+ chars and at least one number
     const passwordRegex = /^(?=.*[0-9]).{8,}$/;
 
     if (!passwordRegex.test(password)) {
@@ -41,8 +42,7 @@ function CreateAccount() {
     if (validate()) {
       console.log("Registration Successful:", formData);
       
-      // 3. Automatically redirect to the confirm-email page
-      // In a real app, you would do this AFTER a successful fetch() request
+      // Navigate to the route defined in your App.js
       navigate('/confirm-email'); 
     }
   };
@@ -72,13 +72,14 @@ function CreateAccount() {
           transition={{ duration: 0.6 }}
           className="register-card"
         >
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {error && (
               <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
                 className="error-bubble"
+                style={{ color: 'red', marginBottom: '10px', textAlign: 'center' }}
               >
                 {error}
               </motion.div>
@@ -88,7 +89,13 @@ function CreateAccount() {
           <form onSubmit={handleRegister} className="login-form">
             <div className="input-group">
               <label>Select Position</label>
-              <select name="position" value={formData.position} onChange={handleChange} required className="custom-select">
+              <select 
+                name="position" 
+                value={formData.position} 
+                onChange={handleChange} 
+                required 
+                className="custom-select"
+              >
                 <option value="" disabled>Select your position here</option>
                 <option value="admin">System Administrator</option>
                 <option value="manager">Sales Manager</option>
@@ -114,7 +121,7 @@ function CreateAccount() {
                 <input 
                   name="password" 
                   type="password" 
-                  placeholder="Must be atleast 8 characters and include numbers" 
+                  placeholder="8+ characters with numbers" 
                   onChange={handleChange} 
                   required 
                 />
