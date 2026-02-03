@@ -1,40 +1,94 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { motion } from 'framer-motion';
 import '../styles/forgot-pass.css';
 import bgVideo from '../assets/video/background.mp4';
 
 function ForgotPassword() {
   const [step, setStep] = useState(1);
-  const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpCorrect, setOtpCorrect] = useState(false);
+
+  const handleGetOtp = () => {
+    setOtpMessage('Another OTP Sent, please check your email.');
+    setError('');
+    setStep(2);
+    setOtpCorrect(false);
+  };
+
+  const handleConfirmOtp = () => {
+    if (otp === '1234') { // example correct OTP
+      setOtpMessage('Correct OTP, you may proceed.');
+      setError('');
+      setOtpCorrect(true);
+    } else {
+      setError('Invalid OTP');
+      setOtpMessage('');
+      setOtpCorrect(false);
+    }
+  };
+
+  const handleProceedReset = () => {
+    setStep(3);
+    setOtpMessage('');
+    setOtpCorrect(false);
+    setError('');
+  };
 
   return (
     <div className="fp-container">
 
-      {/* LEFT SIDE */}
-      <div className="fp-left">
-        <video autoPlay loop muted playsInline className="fp-video">
-          <source src={bgVideo} type="video/mp4" />
-        </video>
+      {/* FULLSCREEN BACKGROUND VIDEO */}
+      <video autoPlay loop muted playsInline className="bg-video">
+        <source src={bgVideo} type="video/mp4" />
+      </video>
 
+      {/* NAVBAR */}
+      <div className="header-nav">
+        <img src="/vtic.webp" alt="VTIC Logo" className="logo-white" />
+        <a href="https://vtic.ph" target="_blank" rel="noreferrer" className="visit-link">
+          Visit Website
+        </a>
+        <a href="/" className="fp-back-nav">← Back to login</a>
+      </div>
+
+      {/* LEFT BRANDING */}
+      <div className="fp-left">
         <div className="fp-overlay">
           <div className="fp-text">
-            <h1>THINK DIGITAL.<br />BUILD SMART.<br />SCALE FAST.</h1>
-            <p>Visible is your trusted IT partner in navigating the digital landscape.</p>
+            <h1>
+              THINK DIGITAL.<br />
+              BUILD SMART.<br />
+              SCALE FAST.
+            </h1>
+            <p>
+              Visible is your trusted IT partner in navigating the digital
+              landscape.
+            </p>
           </div>
-
-          <a href="/" className="fp-back">← Back to login</a>
         </div>
       </div>
 
-      {/* RIGHT SIDE */}
+      {/* RIGHT SIDE WRAPPER */}
       <div className="fp-right">
-        <div className="fp-card">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="fp-card fp-card-otp"
+        >
 
-          {/* STEP 1 */}
           {step === 1 && (
             <>
               <h2>Forgot password?</h2>
               <p className="fp-subtext">
-                Please enter the email associated with your account
+                Please enter the email address associated with your account
               </p>
 
               <label className="fp-label">Email</label>
@@ -42,80 +96,94 @@ function ForgotPassword() {
                 type="email"
                 className="fp-input"
                 placeholder="Input your email"
+                onChange={(e) => setEmail(e.target.value)}
               />
 
-              <button
-                className="fp-btn"
-                onClick={() => {
-                  setMessage('OTP has been sent. Please check your email.');
-                  setStep(2);
-                }}
-              >
+              <button className="fp-btn" onClick={handleGetOtp}>
                 Get OTP
               </button>
             </>
           )}
 
-          {/* STEP 2 */}
           {step === 2 && (
             <>
               <h2>Confirm Email</h2>
-              <p className="fp-subtext">
-                OTP has been sent. Please check your email
-              </p>
 
-              {message && <p className="fp-success">{message}</p>}
+              {/* Subtext */}   
+              <p className="fp-subtext">OTP has sent already, Please check your email</p>
 
-              <label className="fp-label">OTP</label>
+              {/* OTP message immediately below subtext */}
+              {(otpMessage && !otpCorrect) && (
+                <div className="fp-info" style={{ marginTop: '10px' }}>
+                  {otpMessage}
+                </div>
+              )}
+              {error && (
+                <div className="fp-error" style={{ marginTop: '10px' }}>
+                  {error}
+                </div>
+              )}
+
+              {/* OTP input */}
+              <label className="fp-label" style={{ marginTop: '20px' }}>OTP</label>
               <input
                 className="fp-input"
                 placeholder="Input your OTP"
+                onChange={(e) => setOtp(e.target.value)}
               />
 
-              <button
-                className="fp-btn"
-                onClick={() => setStep(3)}
-              >
-                Confirm
+              <button className="fp-btn" onClick={handleConfirmOtp}>
+                Confirm OTP
               </button>
 
-              <div className="fp-resend">Resend OTP</div>
+              {/* Proceed button fixed at bottom */}
+              {otpCorrect && (
+                <button
+                  className="fp-btn secondary fp-btn-bottom"
+                  onClick={handleProceedReset}
+                >
+                  Proceed to Reset Password
+                </button>
+              )}
             </>
           )}
 
-          {/* STEP 3 */}
           {step === 3 && (
             <>
               <h2>Reset password</h2>
-              <p className="fp-subtext">
-                Please enter your new password
-              </p>
 
-            <label className="fp-label">New password</label>
-            <input
-                type="password"
-                className="fp-input"
-                placeholder="Must be at least 8 characters and include numbers"
-            />
+              <label className="fp-label">New password</label>
+              <div className="password-wrapper">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="fp-input"
+                  placeholder="New password"
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="eye-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
 
-            <label className="fp-label">Confirm password</label>
-            <input
+              <label className="fp-label">Confirm password</label>
+              <input
                 type="password"
                 className="fp-input"
                 placeholder="Confirm password"
-            />
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
 
-            <button className="fp-btn secondary">
-                Confirm
-            </button>
+              <button className="fp-btn secondary">Confirm</button>
             </>
-        )}
-
-        </div>
+          )}
+        </motion.div>
+      </div>
     </div>
-
-    </div>
-);
+  );
 }
 
 export default ForgotPassword;
