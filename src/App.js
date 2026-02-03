@@ -5,6 +5,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 import bgVideo from './assets/video/background.mp4';
 import CreateAccount from './pages/create-account'; 
+import ConfirmEmail from './pages/confirm-email';
+
 
 const LoginView = ({ email, setEmail, password, setPassword, handleLogin, showPassword, setShowPassword, error }) => (
   <div className="login-container">
@@ -123,6 +125,7 @@ function App() {
           />
         } />
         <Route path="/signup" element={<CreateAccount />} />
+        <Route path="/confirm-email" element={<ConfirmEmail />} />
       </Routes>
     </Router>
   );
