@@ -14,15 +14,20 @@
 }
 
 /* ===============================
-   CONTAINER & BACKGROUND VIDEO
+   CONTAINER & LAYOUT
 ================================ */
 .fp-container {
   position: relative;
   min-height: 100vh;
   width: 100%;
   display: flex;
+  /* Centering the pair and using gap to control the distance */
+  justify-content: center; 
+  align-items: center;
+  gap: 60px; 
   font-family: 'Poppins', sans-serif;
   overflow: hidden;
+  padding: 0 40px;
 }
 
 /* FULLSCREEN VIDEO */
@@ -41,17 +46,16 @@
    LEFT SIDE: BRANDING
 ================================ */
 .fp-left {
-  flex: 1;
+  flex: 0 1 auto; 
   position: relative;
   z-index: 1;
 }
 
 .fp-overlay {
-  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 60px;
+  padding: 0; 
   color: white;
 }
 
@@ -68,26 +72,17 @@
   line-height: 1.5;
   max-width: 450px;
   opacity: 0.9;
-  margin-bottom: 40px;
-}
-
-.fp-back {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: #fff;
-  text-decoration: none;
 }
 
 /* ===============================
    RIGHT SIDE & CARD
 ================================ */
 .fp-right {
-  flex: 1;
+  flex: 0 1 auto;
   background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
   z-index: 1;
 }
 
@@ -98,6 +93,7 @@
   padding: 60px;
   border-radius: 40px;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  position: relative; /* Support for absolute positioning inside if needed */
 }
 
 .fp-card h2 {
@@ -111,6 +107,12 @@
   font-family: 'Glacial Indifference', sans-serif;
   color: #333;
   font-size: 1.05rem;
+  margin-bottom: 30px;
+}
+
+.fp-divider {
+  border: 0;
+  border-top: 1.5px solid #eee;
   margin-bottom: 30px;
 }
 
@@ -138,7 +140,6 @@
   border-color: #000;
 }
 
-/* PASSWORD */
 .password-wrapper {
   position: relative;
 }
@@ -184,22 +185,49 @@
 }
 
 /* ===============================
-  MESSAGES
+   MESSAGES
 ================================ */
+.fp-error, .fp-info {
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
 .fp-error {
   background: #ffebee;
   color: #c62828;
-  padding: 14px 18px;
-  border-radius: 12px;
-  margin-bottom: 20px;
 }
 
-.fp-success {
-  background: #e8f5e9;
-  color: #2e7d32;
-  padding: 14px 18px;
-  border-radius: 12px;
-  margin-bottom: 20px;
+.fp-info {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+/* ===============================
+   HEADER / NAV
+================================ */
+.header-nav {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  width: 100%;
+  padding: 0 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.logo-white {
+  height: 40px;
+}
+
+.fp-back-nav {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #fff;
+  text-decoration: none;
 }
 
 /* ===============================
@@ -208,15 +236,13 @@
 @media (max-width: 1100px) {
   .fp-container {
     flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 100px;
+    gap: 30px;
   }
 
-  .fp-left,
-  .fp-right {
+  .fp-left, .fp-right {
     width: 100%;
-  }
-
-  .fp-overlay {
-    padding: 50px 30px;
     text-align: center;
   }
 
@@ -227,87 +253,10 @@
   .fp-card {
     padding: 40px 30px;
   }
-}
 
-
-/* Header Navbar */
-.header-nav {
-  position: absolute;
-  top: 20px;
-  left: 0;
-  width: 100%;
-  padding: 0 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between; /* logo left, back link right */
-  z-index: 10;
-}
-
-.logo-white {
-  height: 40px;
-}
-
-.visit-link {
-  color: #fff;
-  font-weight: 500;
-  text-decoration: none;
-  margin: 0 20px;
-}
-
-.visit-link:hover {
-  color: #ddd;
-}
-
-.fp-back-nav {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #fff;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.fp-back-nav:hover {
-  color: #ddd;
-}
-
-/* Responsive nav padding */
-@media (max-width: 1100px) {
   .header-nav {
     padding: 0 30px;
     flex-direction: column;
     gap: 10px;
   }
-}
-
-/* OTP info below subtext */
-.fp-info {
-  background: #e3f2fd; /* light blue */
-  color: #0d47a1; /* dark blue */
-  padding: 14px 18px;
-  border-radius: 12px;
-  text-align: center;
-}
-
-.fp-error {
-  background: #ffebee;
-  color: #c62828;
-  padding: 14px 18px;
-  border-radius: 12px;
-  text-align: center;
-}
-
-/* Proceed button fixed at bottom of card */
-.fp-btn-bottom {
-  position: absolute;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80%;
-}
-
-/* Make card position relative so absolute button works */
-.fp-card-otp {
-  position: relative;
-  min-height: 400px; /* adjust for card content */
-  padding-bottom: 80px; /* space for bottom button */
 }
