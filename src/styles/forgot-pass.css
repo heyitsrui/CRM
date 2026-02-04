@@ -1,12 +1,17 @@
+/* ===============================
+   FONTS
+================================ */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@800&display=swap');
 
-/* Glacial Indifference Font */
 @font-face {
   font-family: 'Glacial Indifference';
   src: url('https://fonts.cdnfonts.com/s/14237/GlacialIndifference-Regular.woff') format('woff');
 }
 
+/* ===============================
+   RESET
+================================ */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -14,88 +19,123 @@
 }
 
 /* ===============================
-   CONTAINER & LAYOUT
+   MAIN CONTAINER (same behavior as login-container)
 ================================ */
 .fp-container {
-  position: relative;
   min-height: 100vh;
   width: 100%;
+  position: relative;
   display: flex;
-  /* Centering the pair and using gap to control the distance */
-  justify-content: center; 
   align-items: center;
-  gap: 60px; 
+  justify-content: center;
   font-family: 'Poppins', sans-serif;
   overflow: hidden;
-  padding: 0 40px;
 }
 
-/* FULLSCREEN VIDEO */
+/* ===============================
+   BACKGROUND VIDEO
+================================ */
 .bg-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(0.65);
   z-index: -1;
+  filter: brightness(0.65);
   pointer-events: none;
 }
 
 /* ===============================
-   LEFT SIDE: BRANDING
+   HEADER NAV
+================================ */
+.header-nav {
+  position: absolute;
+  top: 40px;
+  width: 100%;
+  padding: 0 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.logo-white {
+  height: 40px;
+  filter: brightness(0) invert(1);
+}
+
+.visit-link,
+.fp-back-nav {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ===============================
+   CONTENT WRAPPER (matches login layout)
+================================ */
+.fp-container-inner {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8%;
+  z-index: 5;
+}
+
+/* ===============================
+   LEFT BRANDING
 ================================ */
 .fp-left {
-  flex: 0 1 auto; 
-  position: relative;
-  z-index: 1;
+  color: white;
+  max-width: 550px;
 }
 
 .fp-overlay {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 0; 
-  color: white;
 }
 
 .fp-text h1 {
   font-family: 'League Spartan', sans-serif;
-  font-size: 4.2rem;
+  font-size: 4.8rem;
   line-height: 0.9;
-  margin-bottom: 20px;
+  letter-spacing: -2px;
+  margin-bottom: 25px;
 }
 
 .fp-text p {
   font-family: 'Glacial Indifference', sans-serif;
   font-size: 1.15rem;
   line-height: 1.5;
-  max-width: 450px;
   opacity: 0.9;
 }
 
 /* ===============================
-   RIGHT SIDE & CARD
+   RIGHT SIDE CARD
 ================================ */
 .fp-right {
-  flex: 0 1 auto;
-  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
 }
 
 .fp-card {
-  background: #ffffff;
+  background: #fff;
   width: 100%;
   max-width: 580px;
   padding: 60px;
   border-radius: 40px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
-  position: relative; /* Support for absolute positioning inside if needed */
+  box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+  position: relative;
 }
 
+/* ===============================
+   CARD TEXT
+================================ */
 .fp-card h2 {
   font-size: 3.8rem;
   font-weight: 700;
@@ -110,43 +150,52 @@
   margin-bottom: 30px;
 }
 
-.fp-divider {
-  border: 0;
-  border-top: 1.5px solid #eee;
-  margin-bottom: 30px;
+.divider {
+  border: none;
+  border-top: 1.5px solid #000;
+  margin-bottom: 35px;
 }
 
 /* ===============================
-   FORM ELEMENTS
+   FORM
 ================================ */
 .fp-label {
   display: block;
   font-weight: 700;
   margin-bottom: 10px;
-  color: #000;
+  font-size: 0.95rem;
+  color: #1a1a1a;
 }
 
 .fp-input {
   width: 100%;
-  padding: 20px 24px;
-  border-radius: 18px;
-  border: 1.5px solid #ccc;
-  margin-bottom: 20px;
-  font-size: 1rem;
+  padding: 16px 22px;
+  border: 1.2px solid #a0a0a0;
+  border-radius: 14px;
+  font-size: 0.95rem;
   outline: none;
+  transition: border-color 0.3s;
+  margin-bottom: 18px;
 }
 
 .fp-input:focus {
   border-color: #000;
 }
 
+.fp-input::placeholder {
+  color: #aaa;
+}
+
+/* ===============================
+   PASSWORD
+================================ */
 .password-wrapper {
   position: relative;
 }
 
 .eye-btn {
   position: absolute;
-  right: 18px;
+  right: 20px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -160,19 +209,21 @@
 ================================ */
 .fp-btn {
   width: 100%;
-  padding: 22px;
-  border-radius: 60px;
-  border: none;
   background: #000;
   color: white;
-  font-size: 1.2rem;
+  border: none;
+  padding: 22px;
+  border-radius: 60px;
+  font-size: 1.3rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, background 0.3s;
+  margin-top: 20px;
+  transition: transform 0.2s, background 0.3s, box-shadow 0.2s;
 }
 
 .fp-btn:hover {
   background: #222;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
 }
 
 .fp-btn:active {
@@ -181,82 +232,65 @@
 
 .fp-btn.secondary {
   background: #0d47a1;
-  margin-top: 15px;
 }
 
 /* ===============================
    MESSAGES
 ================================ */
-.fp-error, .fp-info {
-  padding: 14px 18px;
-  border-radius: 12px;
-  margin-bottom: 20px;
+.fp-error,
+.error-bubble {
+  background: #fff0f0;
+  color: #d63031;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
   text-align: center;
+  margin-bottom: 18px;
+  font-weight: 600;
 }
 
-.fp-error {
-  background: #ffebee;
-  color: #c62828;
+.fp-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 18px;
 }
 
 .fp-info {
   background: #e3f2fd;
   color: #0d47a1;
-}
-
-/* ===============================
-   HEADER / NAV
-================================ */
-.header-nav {
-  position: absolute;
-  top: 20px;
-  left: 0;
-  width: 100%;
-  padding: 0 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 10;
-}
-
-.logo-white {
-  height: 40px;
-}
-
-.fp-back-nav {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #fff;
-  text-decoration: none;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 18px;
 }
 
 /* ===============================
    RESPONSIVE
 ================================ */
 @media (max-width: 1100px) {
-  .fp-container {
+  .fp-container-inner {
     flex-direction: column;
-    justify-content: flex-start;
-    padding-top: 100px;
-    gap: 30px;
+    padding: 100px 20px;
   }
 
-  .fp-left, .fp-right {
-    width: 100%;
+  .fp-left {
     text-align: center;
+    margin-bottom: 50px;
   }
 
   .fp-text h1 {
     font-size: 3rem;
   }
 
-  .fp-card {
-    padding: 40px 30px;
+  .header-nav {
+    padding: 20px;
   }
 
-  .header-nav {
-    padding: 0 30px;
-    flex-direction: column;
-    gap: 10px;
+  .fp-card {
+    padding: 40px 28px;
+    border-radius: 28px;
   }
 }
