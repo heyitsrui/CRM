@@ -24,7 +24,7 @@ function CreateAccount() {
 
   const validate = () => {
     const { password, confirmPassword } = formData;
-    // Requires 8+ chars and at least one number
+    // Password requires 8+ chars and at least one number
     const passwordRegex = /^(?=.*[0-9]).{8,}$/;
 
     if (!passwordRegex.test(password)) {
@@ -38,28 +38,35 @@ function CreateAccount() {
     return true;
   };
 
-    const handleRegister = async (e) => {
-      e.preventDefault();
+  const handleRegister = async (e) => {
+    e.preventDefault();
 
-      if (!validate()) return;
+    if (!validate()) return;
 
-      try {
-        // 1️⃣ Send OTP to backend
-        await axios.post("http://localhost:5000/send-otp", {
-          email: formData.email,
-        });
+    try {
+      // 1️⃣ Send OTP to backend
+      await axios.post("http://localhost:5000/send-otp", {
+        email: formData.email,
+      });
 
-        // 2️⃣ Save email for confirm page
-        localStorage.setItem("userEmail", formData.email);
+      // 2️⃣ Register user in DB (no hashing)
+      await axios.post("http://localhost:5000/register", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.position
+      });
 
-        // 3️⃣ Go to confirm page
-        navigate("/confirm-email");
+      // 3️⃣ Save email for confirm page
+      localStorage.setItem("userEmail", formData.email);
 
-      } catch (err) {
-        setError("Failed to send OTP. Try again.");
-      }
-    };
+      // 4️⃣ Navigate to confirm OTP page
+      navigate("/confirm-email");
 
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send OTP or register. Try again.");
+    }
+  };
 
   return (
     <div className="login-container">
@@ -72,13 +79,21 @@ function CreateAccount() {
         <Link to="/" className="visit-link">Go back to login</Link>
       </div>
 
+
+      
       <div className="content-wrapper">
+        <motion.div 
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="branding-box"
+        >
         <div className="branding-box">
           <h1 className="main-title">CREATE AN ACCOUNT</h1>
           <p className="sub-text">
-            Visible is an IT solution company who are your trusted partner in navigating the digital landscape.
+            Create your account.
           </p>
         </div>
+        </motion.div>
 
         <motion.div 
           initial={{ opacity: 0, x: 50 }}
@@ -121,12 +136,24 @@ function CreateAccount() {
 
             <div className="input-group">
               <label>Name</label>
-              <input name="name" type="text" placeholder="Input your fullname" onChange={handleChange} required />
+              <input 
+                name="name" 
+                type="text" 
+                placeholder="Input your fullname" 
+                onChange={handleChange} 
+                required 
+              />
             </div>
 
             <div className="input-group">
               <label>Email</label>
-              <input name="email" type="email" placeholder="Input your email" onChange={handleChange} required />
+              <input 
+                name="email" 
+                type="email" 
+                placeholder="Input your email" 
+                onChange={handleChange} 
+                required 
+              />
             </div>
 
             <div className="input-group">
