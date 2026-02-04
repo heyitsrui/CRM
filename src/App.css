@@ -37,6 +37,7 @@
   pointer-events: none; /* Prevents the video from intercepting clicks */
 }
 
+
 /* Header/Nav */
 .header-nav {
   position: absolute;
