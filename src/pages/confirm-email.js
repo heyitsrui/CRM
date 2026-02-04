@@ -135,7 +135,6 @@ function ConfirmEmail() {
               {loading ? "Verifying..." : "Confirm"}
             </button>
 
-            {/* RESEND OTP BELOW, RIGHT ALIGNED */}
             <div className="resend-wrapper">
               <button
                 type="button"
@@ -154,3 +153,4 @@ function ConfirmEmail() {
 }
 
 export default ConfirmEmail;
+
