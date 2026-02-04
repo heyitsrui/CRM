@@ -120,7 +120,7 @@ function ConfirmEmail() {
                 value={otp}
                 maxLength={6}
                 onChange={(e) =>
-                  setOtp(e.target.value.replace(/[^0-9]/g, ""))
+                    setOtp(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))
                 }
                 required
               />
@@ -153,4 +153,3 @@ function ConfirmEmail() {
 }
 
 export default ConfirmEmail;
-
