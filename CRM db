@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS otp_table (
+    email VARCHAR(255) PRIMARY KEY,
+    otp VARCHAR(10) NOT NULL,
+    expires_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS otp_table (
+    email VARCHAR(255) PRIMARY KEY,
+    otp VARCHAR(10) NOT NULL,
+    expires_at DATETIME NOT NULL
+);
