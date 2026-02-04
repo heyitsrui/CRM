@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom'; 
 import '../styles/create-account.css';
 import bgVideo from '../assets/video/background.mp4';
+import axios from "axios";
 
 function CreateAccount() {
   const [formData, setFormData] = useState({
@@ -37,15 +38,28 @@ function CreateAccount() {
     return true;
   };
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-    if (validate()) {
-      console.log("Registration Successful:", formData);
-      
-      // Navigate to the route defined in your App.js
-      navigate('/confirm-email'); 
-    }
-  };
+    const handleRegister = async (e) => {
+      e.preventDefault();
+
+      if (!validate()) return;
+
+      try {
+        // 1️⃣ Send OTP to backend
+        await axios.post("http://localhost:5000/send-otp", {
+          email: formData.email,
+        });
+
+        // 2️⃣ Save email for confirm page
+        localStorage.setItem("userEmail", formData.email);
+
+        // 3️⃣ Go to confirm page
+        navigate("/confirm-email");
+
+      } catch (err) {
+        setError("Failed to send OTP. Try again.");
+      }
+    };
+
 
   return (
     <div className="login-container">
