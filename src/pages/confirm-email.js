@@ -1,55 +1,113 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import '../styles/create-account.css'; // Reusing your existing styles
-import bgVideo from '../assets/video/background.mp4';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import "../styles/create-account.css";
+import bgVideo from "../assets/video/background.mp4";
 
 function ConfirmEmail() {
-  const [otp, setOtp] = useState('');
-  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleConfirm = (e) => {
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const email = localStorage.getItem("userEmail");
+
+  /* ---------------- VERIFY OTP ---------------- */
+  const handleConfirm = async (e) => {
     e.preventDefault();
-    if (otp.length < 4) {
-      setError("Please enter a valid OTP.");
-    } else {
-      console.log("Confirming OTP:", otp);
-      // Add your API logic here
+
+    if (otp.length !== 6) {
+      setError("OTP must be 6 digits");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await axios.post(
+        "http://localhost:5000/verify-otp",
+        {
+          email,
+          otp,
+        }
+      );
+
+      if (res.data.success) {
+        alert("✅ Email verified successfully!");
+
+        localStorage.removeItem("userEmail");
+
+        navigate("/login");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ---------------- RESEND OTP ---------------- */
+  const handleResend = async () => {
+    try {
+      setResending(true);
+      setError("");
+
+      await axios.post("http://localhost:5000/send-otp", { email });
+
+      alert("📩 New OTP sent to your email");
+    } catch (err) {
+      setError("Failed to resend OTP");
+    } finally {
+      setResending(false);
     }
   };
 
   return (
     <div className="login-container">
+      {/* Background video */}
       <video autoPlay loop muted playsInline className="bg-video">
         <source src={bgVideo} type="video/mp4" />
       </video>
 
       <div className="header-nav">
         <img src="/vtic.webp" alt="Logo" className="logo-white" />
-        <Link to="/" className="visit-link">Go back to login</Link>
+        <Link to="/" className="visit-link">
+          Go back to login
+        </Link>
       </div>
 
       <div className="content-wrapper">
         <div className="branding-box">
           <h1 className="main-title">CREATE AN ACCOUNT</h1>
           <p className="sub-text">
-            Visible is an IT solution company who are your trusted partner in navigating the digital landscape.
+            Visible is an IT solution company who are your trusted partner in
+            navigating the digital landscape.
           </p>
         </div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           className="register-card"
         >
-          <h2 className="card-title" style={{ fontSize: '3rem' }}>Confirm Email</h2>
-          <p className="card-welcome">OTP has sent already, Please check your email</p>
-          
+          <h2 className="card-title" style={{ fontSize: "3rem" }}>
+            Confirm Email
+          </h2>
+
+          <p className="card-welcome">
+            OTP has been sent to <b>{email}</b>
+          </p>
+
           <hr className="divider" />
 
+          {/* Error message */}
           <AnimatePresence>
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
@@ -63,22 +121,38 @@ function ConfirmEmail() {
           <form onSubmit={handleConfirm} className="login-form">
             <div className="input-group">
               <label>OTP</label>
-              <input 
-                name="otp"
-                type="text" 
-                placeholder="Input your OTP" 
+
+              <input
+                type="text"
+                placeholder="Enter 6 digit OTP"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required 
+                maxLength={6}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))
+                }
+                required
               />
             </div>
 
-            <button type="submit" className="register-btn">Confirm</button>
-            
-            <div style={{ textAlign: 'right', marginTop: '15px' }}>
-              <Link to="/resend-otp" className="visit-link" style={{ color: '#333', fontWeight: 'bold' }}>
-                Resend OTP
-              </Link>
+            <button type="submit" className="register-btn" disabled={loading}>
+              {loading ? "Verifying..." : "Confirm"}
+            </button>
+
+            <div style={{ textAlign: "right", marginTop: "15px" }}>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="visit-link"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                {resending ? "Sending..." : "Resend OTP"}
+              </button>
             </div>
           </form>
         </motion.div>
