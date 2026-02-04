@@ -64,7 +64,6 @@ function ForgotPassword() {
     try {
       const res = await fetch('http://localhost:5000/api/verify-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
       });
 
@@ -98,13 +97,10 @@ function ForgotPassword() {
         <source src={bgVideo} type="video/mp4" />
       </video>
 
-      <div className="header-nav">
-        <img src="/vtic.webp" alt="VTIC Logo" className="logo-white" />
-        <a href="/" className="fp-back-nav">Back to login</a>
-        <a href="https://vtic.ph" target="_blank" rel="noreferrer" className="visit-link">
-          Visit Website
-        </a>
-      </div>
+<div className="header-nav">
+  <img src="/vtic.webp" alt="VTIC Logo" className="logo-white" />
+  <a href="/" className="fp-back-nav">Back to login</a>
+</div>
 
       <div className="fp-left">
         <div className="fp-overlay">
