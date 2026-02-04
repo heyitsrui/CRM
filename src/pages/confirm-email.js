@@ -28,20 +28,15 @@ function ConfirmEmail() {
       setLoading(true);
       setError("");
 
-      const res = await axios.post(
-        "http://localhost:5000/verify-otp",
-        {
-          email,
-          otp,
-        }
-      );
+      const res = await axios.post("http://localhost:5000/verify-otp", {
+        email,
+        otp,
+      });
 
       if (res.data.success) {
         alert("✅ Email verified successfully!");
-
         localStorage.removeItem("userEmail");
-
-        navigate("/login");
+        navigate("/"); // back to login
       }
     } catch (err) {
       setError(err.response?.data?.message || "Invalid OTP");
@@ -57,7 +52,6 @@ function ConfirmEmail() {
       setError("");
 
       await axios.post("http://localhost:5000/send-otp", { email });
-
       alert("📩 New OTP sent to your email");
     } catch (err) {
       setError("Failed to resend OTP");
@@ -90,7 +84,7 @@ function ConfirmEmail() {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, x: 50 }}
+          initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           className="register-card"
         >
@@ -104,11 +98,10 @@ function ConfirmEmail() {
 
           <hr className="divider" />
 
-          {/* Error message */}
           <AnimatePresence>
             {error && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 className="error-bubble"
@@ -121,35 +114,34 @@ function ConfirmEmail() {
           <form onSubmit={handleConfirm} className="login-form">
             <div className="input-group">
               <label>OTP</label>
-
               <input
                 type="text"
                 placeholder="Enter 6 digit OTP"
                 value={otp}
                 maxLength={6}
                 onChange={(e) =>
-                  setOtp(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))
+                  setOtp(e.target.value.replace(/[^0-9]/g, ""))
                 }
                 required
               />
             </div>
 
-            <button type="submit" className="register-btn" disabled={loading}>
+            {/* CONFIRM BUTTON */}
+            <button
+              type="submit"
+              className="register-btn"
+              disabled={loading}
+            >
               {loading ? "Verifying..." : "Confirm"}
             </button>
 
-            <div style={{ textAlign: "right", marginTop: "15px" }}>
+            {/* RESEND OTP BELOW, RIGHT ALIGNED */}
+            <div className="resend-wrapper">
               <button
                 type="button"
                 onClick={handleResend}
                 disabled={resending}
-                className="visit-link"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
+                className="resend-btn"
               >
                 {resending ? "Sending..." : "Resend OTP"}
               </button>
