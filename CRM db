@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS otp_table (
     expires_at DATETIME NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS otp_table (
+CREATE TABLE IF NOT EXISTS user (
     email VARCHAR(255) PRIMARY KEY,
     otp VARCHAR(10) NOT NULL,
     expires_at DATETIME NOT NULL
