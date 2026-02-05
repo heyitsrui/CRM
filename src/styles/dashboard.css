@@ -41,6 +41,35 @@ body {
   padding-top: 20px;
 }
 
+.nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease; /* Smooth transition for color changes */
+  gap: 12px; /* Space between icon and text */
+}
+
+.nav-item:hover {
+  background-color: #f8fafc; /* Subtle hint when hovering */
+}
+
+.nav-item.active {
+  background-color: #f0f4ff; 
+  color: #2563eb;
+  border-left: 4px solid #2563eb;
+  font-weight: 600;
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+}
+
 .logo-section {
   padding: 0 20px 40px 20px;
 }
