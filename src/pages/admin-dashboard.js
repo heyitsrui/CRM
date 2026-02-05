@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutGrid, Lightbulb, FileText, Landmark, BarChart3, Users, LogOut } from 'lucide-react';
+import '../styles/dashboard.css';
 
 const Sidebar = () => {
   const menuItems = [
