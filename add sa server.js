@@ -58,5 +58,33 @@ app.get("/api/recent-activity", async (req, res) => {
   }
 });
 
+// --- PROJECT / PROPOSAL ROUTES ---
+app.get("/api/projects", async (req, res) => {
+  try {
+    const rows = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
+    res.json({ success: true, projects: rows });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.post("/api/projects", async (req, res) => {
+  const { title, client, address, status } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO projects (title, client, address, status) VALUES (?, ?, ?, ?)",
+      [title, client, address, status || 'Lead']
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.put("/api/projects/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    await queryDB("UPDATE projects SET status = ? WHERE id = ?", [status, id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
