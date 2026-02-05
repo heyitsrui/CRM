@@ -7,6 +7,7 @@ import bgVideo from './assets/video/background.mp4';
 import CreateAccount from './pages/create-account'; 
 import ConfirmEmail from './pages/confirm-email';
 import ForgotPassword from './pages/forgot-pass';
+import AdminDashboard from './pages/admin-dashboard';
 
 // ==================== LOGIN VIEW ====================
 const LoginView = () => {
@@ -149,7 +150,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Placeholder dashboards */}
-        <Route path="/admin-dashboard" element={<div>Admin Dashboard</div>} />
+        <Route path="/admin-dashboard" element={<AdminDashboard/>}/>
         <Route path="/manager-dashboard" element={<div>Manager Dashboard</div>} />
         <Route path="/executive-dashboard" element={<div>Executive Dashboard</div>} />
         <Route path="/finance-dashboard" element={<div>Finance Dashboard</div>} />
