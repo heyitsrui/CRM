@@ -1,0 +1,234 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@800&display=swap');
+
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('https://fonts.cdnfonts.com/s/14237/GlacialIndifference-Regular.woff') format('woff');
+}
+
+:root {
+  --sidebar-width: 240px;
+  --brand-teal: #3ba3a5;
+  --bg-main: #ffffff;
+  --bg-sidebar: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #8e8e8e;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--bg-main);
+}
+
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100%;
+  border-right: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease; /* Smooth transition for color changes */
+  gap: 12px; /* Space between icon and text */
+}
+
+.nav-item:hover {
+  background-color: #f8fafc; /* Subtle hint when hovering */
+}
+
+.nav-item.active {
+  background-color: #f0f4ff; 
+  color: #2563eb;
+  border-left: 4px solid #2563eb;
+  font-weight: 600;
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+}
+
+.logo-section {
+  padding: 0 20px 40px 20px;
+}
+
+.logo-section img {
+  max-width: 150px;
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 15px; /* Creates space for the active pill effect */
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 15px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: 'Glacial Indifference', sans-serif;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.nav-item.active {
+  background-color: var(--brand-teal);
+  color: #ffffff;
+  border-radius: 0 12px 12px 0;
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- TOP NAVBAR --- */
+.main-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-navbar {
+  height: 80px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 40px;
+}
+
+.user-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.user-name {
+  font-family: 'League Spartan', sans-serif;
+  font-size: 1.2rem;
+  color: #333;
+  line-height: 1;
+}
+
+.user-email-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #e0f2f1, #cfd8dc); /* Match your screenshot's sky look */
+  overflow: hidden;
+}
+
+/* User Management Table Styles */
+.user-management-container {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.table-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.search-bar input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.add-user-btn {
+  background-color: #3ba3a5;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-table th {
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  padding: 12px;
+  color: #666;
+}
+
+.user-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f9f9f9;
+}
+
+.user-info-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-name-text { font-weight: bold; text-transform: capitalize; }
+.user-email-text { font-size: 0.85rem; color: #888; }
+
+.action-buttons button {
+  margin-right: 5px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-btn { color: #d9534f; }
+.edit-btn { color: #555; }
+
+.na-badge { color: #5a789b; font-weight: 500; }
