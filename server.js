@@ -289,11 +289,12 @@ app.delete("/api/users/:id", async (req, res) => {
   }
 });
 
-// ================= KANBAN PROJECTS =================
+// ================= PROJECTS / DEALS =================
 app.get("/api/projects", async (req, res) => {
   try {
     const rows = await queryDB(`
-      SELECT id, title, client, address, status, created_at
+      SELECT id, deal_name, deal_owner, address, status, paid_amount, due_amount,
+             description, contact, company, amount, created_at
       FROM projects
       ORDER BY created_at DESC
     `);
@@ -304,16 +305,20 @@ app.get("/api/projects", async (req, res) => {
 });
 
 app.post("/api/projects", async (req, res) => {
-  const { title, client, address } = req.body;
-  if (!title) return res.json({ success: false, message: "Title is required" });
+  const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
+  if (!deal_name) return res.json({ success: false, message: "Deal Name is required" });
 
   try {
-    await queryDB(
-      `INSERT INTO projects (title, client, address, status, paid_amount, due_amount)
-       VALUES (?, ?, ?, 'Lead', 0, 0)`,
-      [title, client || "", address || ""]
+    const result = await queryDB(
+      `INSERT INTO projects
+       (deal_name, deal_owner, address, status, paid_amount, due_amount, description, contact, company, amount, created_at)
+       VALUES (?, ?, ?, 'Lead', 0, 0, ?, ?, ?, ?, NOW())`,
+      [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0]
     );
-    res.json({ success: true });
+
+    const project = await queryDB("SELECT * FROM projects WHERE id = ?", [result.insertId]);
+
+    res.json({ success: true, project: project[0] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -326,9 +331,44 @@ app.put("/api/projects/:id/status", async (req, res) => {
     await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
     res.json({ success: true });
   } catch (err) {
+    res.status(0).json({ success: false, error: err.message });
+  }
+});
+
+// Update Project Route (Fixed handling of empty/optional fields)
+app.put("/api/projects/:id", async (req, res) => {
+  const { id } = req.params;
+  const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
+
+  try {
+    await queryDB(
+      `UPDATE projects SET deal_name=?, deal_owner=?, address=?, description=?, contact=?, company=?, amount=? WHERE id=?`,
+      [
+        deal_name, 
+        deal_owner || "", 
+        address || "", 
+        description || "", 
+        contact || "", 
+        company || "", 
+        amount || 0, // Ensure valid decimal or 0
+        id
+      ]
+    );
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+app.delete("/api/projects/:id", async (req, res) => {
+  try {
+    await queryDB("DELETE FROM projects WHERE id=?", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
