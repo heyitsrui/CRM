@@ -1,13 +1,16 @@
 .proposal-page {
   padding: 20px;
+  max-width: 1600px;
+  margin: auto;
+  background: #f9f9f9;
+  font-family: Segoe UI, sans-serif;
 }
 
 /* HEADER */
 .proposal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .header-actions {
@@ -16,17 +19,17 @@
 }
 
 .search-input {
-  padding: 8px 12px;
+  padding: 8px;
   width: 260px;
-  border: 1px solid #ccc;
   border-radius: 4px;
+  border: 1px solid #ccc;
 }
 
 .create-btn {
   background: #007bff;
-  color: #fff;
+  color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: 4px;
   cursor: pointer;
 }
@@ -36,207 +39,155 @@
   overflow-x: auto;
 }
 
-.kanban-board {
-  display: flex;
-  gap: 16px;
-  min-height: 500px;
-}
-
-.column {
-  background: #f8f9fa;
-  min-width: 260px;
-  padding: 10px;
-  border-radius: 6px;
-}
-
-.column-header {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.column-header .count {
-  font-size: 12px;
-  color: #666;
-}
-
-/* CARD */
-.card {
-  background: #fff;
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 10px;
-  cursor: grab;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-
-.card h4 {
-  margin: 0 0 6px;
-  font-size: 14px;
-}
-
-.card p {
-  font-size: 12px;
-  margin: 2px 0;
-}
-
-.expired-border {
-  border-left: 4px solid #ff4d4d;
-}
-
-.expired-badge {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 10px;
-  font-weight: bold;
-  color: #ff4d4d;
-}
-
-/* MODAL */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal {
-  background: #fff;
-  padding: 20px;
-  width: 320px;
-  border-radius: 6px;
-}
-
-.modal input {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: space-between;
-}
-
-/* TABLE SECTION */
-.table-section {
-  margin-top: 40px;
-}
-
-.table-section h2 {
-  margin-bottom: 10px;
-}
-
-.proposal-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-}
-
-.proposal-table th,
-.proposal-table td {
-  padding: 10px;
-  border-bottom: 1px solid #e0e0e0;
-  text-align: left;
-}
-
-.proposal-table th {
-  background: #f8f9fa;
-  font-weight: 600;
-}
-
-/* STATUS BADGES */
-.status-badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
-  color: white;
-}
-
-.status-badge.lead { background: #6c757d; }
-.status-badge.bidding { background: #17a2b8; }
-.status-badge.signature { background: #ffc107; color: #333; }
-.status-badge.hold { background: #fd7e14; }
-.status-badge.approved { background: #28a745; }
-.status-badge.expired { background: #dc3545; }
-
-/* EXPIRED ROW */
-.expired-row {
-  background: #fff5f5;
-}
-
-/* KANBAN TABLE LAYOUT */
 .kanban-table {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(260px, 1fr));
-  border-top: 1px solid #ddd;
-  border-left: 1px solid #ddd;
-  overflow-x: auto;
-  background: white;
+  display: flex;
+  gap: 14px;
+  width: max-content;
 }
 
 /* COLUMN */
 .column {
-  border-right: 1px solid #ddd;
-  min-height: 400px;
+  width: 280px;
+  background: #f1f3f5;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
 }
 
-/* HEADER (TABLE-LIKE) */
 .column-header {
-  background: #f8f9fa;
-  padding: 10px;
-  font-weight: 600;
+  padding: 12px;
+  font-weight: bold;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
   border-bottom: 1px solid #ddd;
-  position: sticky;
-  top: 0;
-  z-index: 2;
 }
 
-/* BODY */
 .column-body {
   padding: 10px;
-  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* CARD → TABLE ROW */
+/* CARD */
 .card {
   background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  cursor: grab;
-  box-shadow: none;
+  padding: 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
 }
 
-/* CARD TEXT */
-.card h4 {
-  font-size: 14px;
-  margin-bottom: 4px;
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
-.card p {
-  font-size: 12px;
-  margin: 0;
-  color: #555;
+.card-body p {
+  margin-bottom: 6px;
+  line-height: 1.4;
 }
 
-/* EXPIRED */
-.expired-border {
-  border-left: 4px solid #dc3545;
-}
-
-.expired-badge {
-  font-size: 10px;
-  color: #dc3545;
+.amount {
+  color: #28a745;
   font-weight: bold;
   margin-top: 4px;
+}
+
+.muted {
+  font-size: 12px;
+  color: #777;
+  margin-top: 2px;
+}
+
+/* FOOTER */
+.card-footer {
+  margin-top: 10px;
+}
+
+/* STATUS BADGE */
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+/* STATUS COLORS */
+.status-badge.lead {
+  background: #e2e3e5;
+  color: #495057;
+}
+
+.status-badge.bidding {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-badge.signature {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.hold {
+  background: #ffe5d0;
+  color: #8a4b12;
+}
+
+.status-badge.approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.expired {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* DOT */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.lead .dot { background: #6c757d; }
+.bidding .dot { background: #17a2b8; }
+.signature .dot { background: #ffc107; }
+.hold .dot { background: #fd7e14; }
+.approved .dot { background: #28a745; }
+.expired .dot { background: #dc3545; }
+
+/* MENU */
+.menu {
+  cursor: pointer;
+  position: relative;
+}
+
+.menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 18px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  display: none;
+  z-index: 10;
+}
+
+.menu:hover .menu-dropdown {
+  display: block;
+}
+
+.menu-dropdown span {
+  padding: 8px 12px;
+  display: block;
+  cursor: pointer;
+}
+
+.menu-dropdown span:hover {
+  background: #f0f0f0;
 }
