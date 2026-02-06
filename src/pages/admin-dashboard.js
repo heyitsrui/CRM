@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../components/sidebar";
 import TopNav from "../components/topnav";
 import UserManagement from "./user";
-import Proposal from "./proposal";
+import MyProfile from "./myprofile"; // Import the new profile component
 
 import {
   LayoutGrid,
@@ -13,6 +13,7 @@ import {
 
 import "../styles/dashboard.css";
 
+/* --- Sub-Component: Dashboard Overview --- */
 const DashboardOverview = ({ stats, activities }) => (
   <div className="dashboard-content">
     {/* Stats Cards */}
@@ -82,7 +83,7 @@ const DashboardOverview = ({ stats, activities }) => (
       </div>
     </div>
 
-    {/* Activity */}
+    {/* Activity & Chart */}
     <div className="bottom-sections">
       <div className="chart-box">
         <h3>Project Status Overview</h3>
@@ -107,19 +108,20 @@ const DashboardOverview = ({ stats, activities }) => (
   </div>
 );
 
+/* --- Main Dashboard Component --- */
 export default function Dashboard() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [stats, setStats] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
 
-  // ✅ Get the current logged-in user from localStorage
+  // Fetch user from localStorage
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("loggedInUser"));
     if (user) setLoggedInUser(user);
   }, []);
 
-  /* Fetch API data */
+  // Fetch API data
   useEffect(() => {
     fetch("http://localhost:5000/api/dashboard-stats")
       .then((res) => res.json())
@@ -132,29 +134,46 @@ export default function Dashboard() {
       .catch(console.error);
   }, []);
 
-  /* Render page content */
-const renderContent = () => {
-  switch (activeIndex) {
-    case 0:
-      return <DashboardOverview stats={stats} activities={activities} />;
-    case 1:
-      return <Proposal />;
-    case 5:
-      return <UserManagement currentUser={loggedInUser} />;
-    default:
-      return <h2>Coming Soon</h2>;
-  }
-};
+  /**
+   * Render logic based on activeIndex
+   * 0: Overview
+   * 5: User Management
+   * 99: My Profile (Triggered from TopNav)
+   */
+  const renderContent = () => {
+    switch (activeIndex) {
+      case 0:
+        return <DashboardOverview stats={stats} activities={activities} />;
+      case 5:
+        return <UserManagement currentUser={loggedInUser} />;
+      case 99:
+        return <MyProfile user={loggedInUser} />;
+      default:
+        return (
+          <div className="dashboard-content">
+            <h2>Coming Soon</h2>
+            <p>This section is currently under development.</p>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="dashboard-layout">
+      {/* Sidebar handles main navigation indices (0, 1, 2, etc.) */}
       <Sidebar activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
+      
       <main className="main-area">
-        <TopNav loggedInUser={loggedInUser} />
-        <div className="view-container">{renderContent()}</div>
+        {/* Pass setActiveIndex as 'onNavigate' to handle profile clicks */}
+        <TopNav 
+          loggedInUser={loggedInUser} 
+          onNavigate={setActiveIndex} 
+        />
+        
+        <div className="view-container">
+          {renderContent()}
+        </div>
       </main>
     </div>
   );
 }
-
-
