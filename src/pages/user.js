@@ -101,11 +101,18 @@ export default function UserManagement({ currentUser }) {
             required
           />
           <input
+            type="tel"
+            placeholder="Phone"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            required
+          />
+          <input
             type="text"
             placeholder="Password"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            required={!editingId} // optional when editing
+            required={!editingId}
           />
           <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             <option value="admin">Admin</option>
@@ -132,6 +139,7 @@ export default function UserManagement({ currentUser }) {
           <tr>
             <th>Name</th>
             <th>Email</th>
+            <th>Phone</th>
             <th>Role</th>
             {isAdmin && <th>Actions</th>}
           </tr>
@@ -141,6 +149,7 @@ export default function UserManagement({ currentUser }) {
             <tr key={user.id}>
               <td>{user.name}</td>
               <td>{user.email}</td>
+              <td>{user.phone}</td>
               <td>{user.role}</td>
               {isAdmin && (
                 <td className="action-buttons">
