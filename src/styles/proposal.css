@@ -1,52 +1,242 @@
-/* Header Styles */
+.proposal-page {
+  padding: 20px;
+}
+
+/* HEADER */
 .proposal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 16px;
 }
 
 .header-actions {
   display: flex;
-  gap: 15px;
+  gap: 10px;
 }
 
 .search-input {
-  padding: 8px 15px;
-  border: 1px solid #ddd;
+  padding: 8px 12px;
+  width: 260px;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  width: 300px;
 }
 
 .create-btn {
-  background-color: #007bff;
-  color: white;
+  background: #007bff;
+  color: #fff;
   border: none;
-  padding: 8px 20px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-weight: bold;
 }
 
-/* Card Expired State */
-.card.expired-border {
+/* KANBAN */
+.kanban-wrapper {
+  overflow-x: auto;
+}
+
+.kanban-board {
+  display: flex;
+  gap: 16px;
+  min-height: 500px;
+}
+
+.column {
+  background: #f8f9fa;
+  min-width: 260px;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.column-header .count {
+  font-size: 12px;
+  color: #666;
+}
+
+/* CARD */
+.card {
+  background: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  cursor: grab;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.card h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.card p {
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+.expired-border {
   border-left: 4px solid #ff4d4d;
 }
 
 .expired-badge {
-  color: #ff4d4d;
-  font-size: 11px;
-  font-weight: bold;
-  border: 1px solid #ff4d4d;
-  padding: 2px 6px;
   display: inline-block;
-  margin: 10px 0;
-  border-radius: 3px;
-  text-transform: uppercase;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #ff4d4d;
 }
 
-.info-text {
-  font-size: 13px;
-  color: #666;
-  margin: 4px 0;
+/* MODAL */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: #fff;
+  padding: 20px;
+  width: 320px;
+  border-radius: 6px;
+}
+
+.modal input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* TABLE SECTION */
+.table-section {
+  margin-top: 40px;
+}
+
+.table-section h2 {
+  margin-bottom: 10px;
+}
+
+.proposal-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.proposal-table th,
+.proposal-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+}
+
+.proposal-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+/* STATUS BADGES */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.status-badge.lead { background: #6c757d; }
+.status-badge.bidding { background: #17a2b8; }
+.status-badge.signature { background: #ffc107; color: #333; }
+.status-badge.hold { background: #fd7e14; }
+.status-badge.approved { background: #28a745; }
+.status-badge.expired { background: #dc3545; }
+
+/* EXPIRED ROW */
+.expired-row {
+  background: #fff5f5;
+}
+
+/* KANBAN TABLE LAYOUT */
+.kanban-table {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(260px, 1fr));
+  border-top: 1px solid #ddd;
+  border-left: 1px solid #ddd;
+  overflow-x: auto;
+  background: white;
+}
+
+/* COLUMN */
+.column {
+  border-right: 1px solid #ddd;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER (TABLE-LIKE) */
+.column-header {
+  background: #f8f9fa;
+  padding: 10px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #ddd;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* BODY */
+.column-body {
+  padding: 10px;
+  min-height: 300px;
+}
+
+/* CARD → TABLE ROW */
+.card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  cursor: grab;
+  box-shadow: none;
+}
+
+/* CARD TEXT */
+.card h4 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.card p {
+  font-size: 12px;
+  margin: 0;
+  color: #555;
+}
+
+/* EXPIRED */
+.expired-border {
+  border-left: 4px solid #dc3545;
+}
+
+.expired-badge {
+  font-size: 10px;
+  color: #dc3545;
+  font-weight: bold;
+  margin-top: 4px;
 }
