@@ -25,3 +25,7 @@ CREATE TABLE activities (
     title VARCHAR(255),
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+ALTER TABLE projects
+ADD COLUMN client VARCHAR(255),
+ADD COLUMN address VARCHAR(255);
