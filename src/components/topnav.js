@@ -1,15 +1,16 @@
-
-const TopNav = () => {
+const TopNav = ({ loggedInUser }) => {
   return (
     <header className="top-nav">
       <div className="user-profile">
         <div className="user-info">
-          <span className="user-name">Userr</span>
-          <span className="user-email">Email</span>
+          <span className="user-name">{loggedInUser?.name || "User"}</span>
+          <span className="user-email">{loggedInUser?.email || "Email"}</span>
         </div>
         <div className="user-avatar">
-          {/* Replace with your image */}
-          <img src="/avatar-placeholder.png" alt="User" />
+          <img
+            src="/avatar-placeholder.png"
+            alt={loggedInUser?.name || "User"}
+          />
         </div>
       </div>
     </header>
