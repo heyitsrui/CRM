@@ -17,48 +17,50 @@ const LoginView = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate(); // Now safe inside Router context
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    try {
-      const response = await fetch('http://localhost:5000/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
+ const handleLogin = async (e) => {
+  e.preventDefault();
+  setError("");
 
-      if (data.success) {
-        localStorage.setItem('userRole', data.user.role);
-        localStorage.setItem('userName', data.user.name);
+  try {
+    const response = await fetch("http://localhost:5000/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-        // Role-based routing
-        switch (data.user.role) {
-          case 'admin':
-            navigate('/admin-dashboard');
-            break;
-          case 'manager':
-            navigate('/manager-dashboard');
-            break;
-          case 'executive':
-            navigate('/executive-dashboard');
-            break;
-          case 'finance':
-            navigate('/finance-dashboard');
-            break;
-          case 'viewer':
-            navigate('/viewer-dashboard');
-            break;
-          default:
-            navigate('/');
-        }
-      } else {
-        setError(data.message);
+    const data = await response.json();
+
+    if (data.success) {
+      // ✅ Store the full user object in localStorage
+      localStorage.setItem("loggedInUser", JSON.stringify(data.user));
+
+      // Role-based routing
+      switch (data.user.role) {
+        case "admin":
+          navigate("/admin-dashboard");
+          break;
+        case "manager":
+          navigate("/manager-dashboard");
+          break;
+        case "executive":
+          navigate("/executive-dashboard");
+          break;
+        case "finance":
+          navigate("/finance-dashboard");
+          break;
+        case "viewer":
+          navigate("/viewer-dashboard");
+          break;
+        default:
+          navigate("/");
       }
-    } catch (err) {
-      setError("Cannot connect to server. Check if backend is running.");
+    } else {
+      setError(data.message);
     }
-  };
+  } catch (err) {
+    setError("Cannot connect to server. Check if backend is running.");
+  }
+};
 
   return (
     <div className="login-container">
