@@ -153,3 +153,44 @@ export default function Dashboard() {
     </div>
   );
 }
+
+// ================= KANBAN PROJECTS =================
+app.get("/api/projects", async (req, res) => {
+  try {
+    const rows = await queryDB(`
+      SELECT id, title, client, address, status, created_at
+      FROM projects
+      ORDER BY created_at DESC
+    `);
+    res.json({ success: true, projects: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/projects", async (req, res) => {
+  const { title, client, address } = req.body;
+  if (!title) return res.json({ success: false, message: "Title is required" });
+
+  try {
+    await queryDB(
+      `INSERT INTO projects (title, client, address, status, paid_amount, due_amount)
+       VALUES (?, ?, ?, 'Lead', 0, 0)`,
+      [title, client || "", address || ""]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put("/api/projects/:id/status", async (req, res) => {
+  const { status } = req.body;
+  const { id } = req.params;
+  try {
+    await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
