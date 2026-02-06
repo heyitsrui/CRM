@@ -1,34 +1,47 @@
-import { 
-  Home, Lightbulb, Clipboard, Building, 
-  BarChart, Users, LogOut 
-} from 'lucide-react'; // Using lucide-react for icons
+import React from 'react';
+import {
+  Home,
+  Lightbulb,
+  FileText,
+  Landmark,
+  BarChart3,
+  Users,
+  LogOut
+} from 'lucide-react';
+import '../styles/dashboard.css';
 
-const Sidebar = () => {
+const Sidebar = ({ activeIndex, setActiveIndex }) => {
   const menuItems = [
-    { icon: <Home size={20} />, label: 'Dashboard', active: true },
-    { icon: <Lightbulb size={20} />, label: 'Dashboard' },
-    { icon: <Clipboard size={20} />, label: 'Dashboard' },
-    { icon: <Building size={20} />, label: 'Dashboard' },
-    { icon: <BarChart size={20} />, label: 'Dashboard' },
-    { icon: <Users size={20} />, label: 'Dashboard' },
-    { icon: <LogOut size={20} />, label: 'Dashboard' },
+    { label: 'Dashboard', icon: <Home size={20} /> },
+    { label: 'Proposal', icon: <Lightbulb size={20} /> },
+    { label: 'Projects & Jobs', icon: <FileText size={20} /> },
+    { label: 'Tasks', icon: <Landmark size={20} /> },
+    { label: 'Client / Supplier', icon: <BarChart3 size={20} /> },
+    { label: 'User / Employee', icon: <Users size={20} /> },
+    { label: 'Logout', icon: <LogOut size={20} />, isLogout: true },
   ];
 
   return (
-    <div className="sidebar">
-      <div className="logo-container">
-        <img src="/path-to-your-logo.png" alt="Visible Logo" className="logo" />
+    <aside className="sidebar">
+      <div className="logo-section">
+        <img src="vtic.webp" alt="Visible Logo" />
       </div>
-      <nav className="nav-menu">
+
+      <nav className="nav-list">
         {menuItems.map((item, index) => (
-          <div key={index} className={`nav-item ${item.active ? 'active' : ''}`}>
+          <button
+            key={index}
+            onClick={() => !item.isLogout && setActiveIndex(index)}
+            className={`nav-item ${activeIndex === index ? 'active' : ''} ${item.isLogout ? 'logout-btn' : ''}`}
+          >
             <span className="nav-icon">{item.icon}</span>
             <span className="nav-label">{item.label}</span>
-          </div>
+          </button>
         ))}
       </nav>
-    </div>
+    </aside>
   );
 };
+
 
 export default Sidebar;
