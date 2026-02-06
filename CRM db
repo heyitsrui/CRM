@@ -30,3 +30,15 @@ CREATE TABLE activities (
 ALTER TABLE projects
 ADD COLUMN client VARCHAR(255),
 ADD COLUMN address VARCHAR(255);
+
+ALTER TABLE projects
+-- rename existing columns
+CHANGE COLUMN title deal_name VARCHAR(255) NOT NULL,
+CHANGE COLUMN client deal_owner VARCHAR(255) DEFAULT '',
+
+-- add new columns
+ADD COLUMN description TEXT AFTER deal_owner,
+ADD COLUMN contact VARCHAR(255) DEFAULT '' AFTER description,
+ADD COLUMN company VARCHAR(255) DEFAULT '' AFTER contact,
+ADD COLUMN amount DECIMAL(15,2) DEFAULT 0 AFTER company;
+
