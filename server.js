@@ -108,15 +108,15 @@ app.post("/verify-otp", async (req, res) => {
 
 // ================= REGISTER USER =================
 app.post("/register", async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, phone, password, role } = req.body;
 
   try {
     const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
     if (existing.length > 0) return res.status(400).json({ success: false, message: "Email already registered" });
 
     await queryDB(
-      "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-      [name, email, password, role]
+      "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
+      [name, email, phone, password, role]
     );
 
     res.json({ success: true, message: "User registered successfully" });
@@ -247,13 +247,13 @@ app.get("/api/users", async (req, res) => {
 
 // ================= CREATE USER =================
 app.post("/api/users", async (req, res) => {
-  const { name, email, password, role, phone } = req.body;
+  const { name, email, phone, password, role } = req.body;
   try {
     const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
     if (existing.length > 0) return res.status(400).json({ success: false, message: "Email already exists" });
 
-    await queryDB("INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)",
-      [name, email, password, role, phone]);
+    await queryDB("INSERT INTO users (name, email, phone, password, role,) VALUES (?, ?, ?, ?, ?)",
+      [name, email, phone, password, role,]);
 
     res.json({ success: true, message: "User created successfully" });
   } catch (err) {
@@ -329,7 +329,6 @@ app.put("/api/projects/:id/status", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
