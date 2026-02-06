@@ -1,0 +1,88 @@
+.user-management-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* Form */
+.user-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.user-form input,
+.user-form select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  flex: 1 1 200px;
+  font-size: 14px;
+}
+
+.user-form button {
+  padding: 10px 20px;
+  background-color: #3ba3a5;
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.user-form button:hover {
+  background-color: #328586;
+}
+
+/* Table */
+.table-controls {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 15px;
+}
+
+.table-controls input[type="text"] {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  width: 250px;
+  font-size: 14px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-table th,
+.user-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.action-buttons button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.action-buttons button:hover {
+  background-color: #f0f0f0;
+}
+
+.edit-btn {
+  color: #007bff;
+}
+
+.delete-btn {
+  color: #dc3545;
+}
