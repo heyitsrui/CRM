@@ -5,7 +5,7 @@ import "../styles/proposal.css";
 const Proposal = () => {
   const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
-  const [showModal, setShowModal] = useState(false); // Renamed for clarity
+  const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
 
   const isAdmin = true;
@@ -23,7 +23,8 @@ const Proposal = () => {
   const [form, setForm] = useState(initialForm);
 
   const columns = ["Lead", "Bidding", "Signature", "Hold", "Approved", "Expired"];
-  const statusClass = (status) => (status || "Lead").toLowerCase();
+
+  const statusClass = (status) => status.toLowerCase();
 
   useEffect(() => {
     fetchProjects();
@@ -32,48 +33,41 @@ const Proposal = () => {
   const fetchProjects = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/projects");
-      if (res.data.success) {
-        const normalized = res.data.projects.map(p => ({
-          ...p,
-          status: p.status || "Lead"
-        }));
-        setProjects(normalized);
-      }
+      if (res.data.success) setProjects(res.data.projects);
     } catch (err) {
       console.error("Failed to fetch projects:", err);
     }
   };
 
   const submitDeal = async () => {
-    if (!form.deal_name.trim()) {
-      alert("Deal name required");
-      return;
-    }
+    if (!form.deal_name) return alert("Deal name required");
 
     try {
       if (editing) {
-        await axios.put(`http://localhost:5000/api/projects/${editing.id}`, form);
-        setProjects(prev => prev.map(p => p.id === editing.id ? { ...p, ...form } : p));
+        await axios.put(
+          `http://localhost:5000/api/projects/${editing.id}`,
+          form
+        );
       } else {
-        const res = await axios.post("http://localhost:5000/api/projects", form);
-        if (res.data.success) {
-          setProjects(prev => [{ ...res.data.project, status: "Lead" }, ...prev]);
-        }
+        await axios.post("http://localhost:5000/api/projects", form);
       }
 
       setShowModal(false);
       setEditing(null);
       setForm(initialForm);
+      fetchProjects();
     } catch (err) {
       console.error("Failed to save deal:", err);
-      alert("Failed to save deal");
     }
   };
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/projects/${id}/status`, { status });
-      setProjects(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+      await axios.put(
+        `http://localhost:5000/api/projects/${id}/status`,
+        { status }
+      );
+      fetchProjects();
     } catch (err) {
       console.error("Failed to update status:", err);
     }
@@ -83,10 +77,17 @@ const Proposal = () => {
     if (!window.confirm("Delete this deal?")) return;
     try {
       await axios.delete(`http://localhost:5000/api/projects/${id}`);
-      setProjects(prev => prev.filter(p => p.id !== id));
+      fetchProjects();
     } catch (err) {
       console.error("Failed to delete deal:", err);
     }
+  };
+
+  const onDragStart = (e, id) => e.dataTransfer.setData("id", id);
+
+  const onDrop = (e, status) => {
+    const id = e.dataTransfer.getData("id");
+    updateStatus(id, status);
   };
 
   const handleEditClick = (p) => {
@@ -105,81 +106,102 @@ const Proposal = () => {
 
   return (
     <div className="proposal-page">
-      <div className="proposal-main">
-        <div className="proposal-header">
-          <h1>Proposals</h1>
-          <div className="header-actions">
-            <input
-              className="search-input"
-              placeholder="Search deals..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button
-              className="create-btn"
-              onClick={() => {
-                setEditing(null);
-                setForm(initialForm);
-                setShowModal(true);
-              }}
-            >
-              + Create Deal
-            </button>
-          </div>
-        </div>
-
-        <div className="kanban-wrapper">
-          <div className="kanban-table">
-            {columns.map((col) => (
-              <div key={col} className="column">
-                <div className={`column-header ${col.toLowerCase()}`}>
-                  <span className="dot" />
-                  {col}
-                </div>
-
-                <div className="column-body">
-                  {projects
-                    .filter(p => (p.status || "Lead") === col && p.deal_name.toLowerCase().includes(search.toLowerCase()))
-                    .map((p) => (
-                      <div key={p.id} className="card">
-                        <div className="card-top">
-                          <h4>{p.deal_name}</h4>
-                          {isAdmin && (
-                            <div className="menu">
-                              ⋮
-                              <div className="menu-dropdown">
-                                <span onClick={() => handleEditClick(p)}>Edit</span>
-                                <span onClick={() => updateStatus(p.id, "Expired")}>Mark Expired</span>
-                                <span onClick={() => deleteDeal(p.id)}>Delete</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="card-body">
-                          <p><b>Owner:</b> {p.deal_owner}</p>
-                          <p><b>Company:</b> {p.company}</p>
-                          <p><b>Contact:</b> {p.contact}</p>
-                          <p><b>Address:</b> {p.address}</p>
-                          <p className="amount">₱{p.amount}</p>
-                          <p className="muted">{p.description}</p>
-
-                          <div className="card-footer">
-                            <span className={`status-badge ${statusClass(p.status)}`}>
-                              {p.status}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="proposal-header">
+        <h1>Proposals</h1>
+        <div className="header-actions">
+          <input
+            className="search-input"
+            placeholder="Search deals..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button
+            className="create-btn"
+            onClick={() => {
+              setEditing(null);
+              setForm(initialForm);
+              setShowModal(true);
+            }}
+          >
+            + Create Deal
+          </button>
         </div>
       </div>
 
-      {/* MODAL CENTERED */}
+      <div className="kanban-wrapper">
+        <div className="kanban-table">
+          {columns.map((col) => (
+            <div
+              key={col}
+              className="column"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => onDrop(e, col)}
+            >
+              <div className={`column-header ${col.toLowerCase()}`}>
+                <span className="dot" />
+                {col}
+              </div>
+
+              <div className="column-body">
+                {projects
+                  .filter(
+                    (p) =>
+                      p.status === col &&
+                      p.deal_name.toLowerCase().includes(search.toLowerCase())
+                  )
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="card"
+                      draggable
+                      onDragStart={(e) => onDragStart(e, p.id)}
+                    >
+                      <div className="card-top">
+                        <h4>{p.deal_name}</h4>
+
+                        {isAdmin && (
+                          <div className="menu">
+                            ⋮
+                            <div className="menu-dropdown">
+                              <span onClick={() => handleEditClick(p)}>
+                                Edit
+                              </span>
+                              <span onClick={() => updateStatus(p.id, "Expired")}>
+                                Mark Expired
+                              </span>
+                              <span onClick={() => deleteDeal(p.id)}>
+                                Delete
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="card-body">
+                        <p><b>Deal Owner:</b> {p.deal_owner}</p>
+                        <p><b>Company:</b> {p.company}</p>
+                        <p><b>Contact:</b> {p.contact}</p>
+                        <p><b>Address:</b> {p.address}</p>
+                        <p className="amount">₱{p.amount}</p>
+                        <p className="muted">{p.description}</p>
+
+                        <div className="card-footer">
+                          <span
+                            className={`status-badge ${statusClass(p.status)}`}
+                          >
+                            {p.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* MODAL COMPONENT */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -187,45 +209,47 @@ const Proposal = () => {
               <h3>{editing ? "Edit Deal" : "Create Deal"}</h3>
               <button className="close-x" onClick={() => setShowModal(false)}>✕</button>
             </div>
-
             <div className="modal-body">
-              <label>Deal Name</label>
-              <input placeholder="Enter deal name" value={form.deal_name}
-                onChange={(e) => setForm({ ...form, deal_name: e.target.value })} />
-              
-              <label>Deal Owner</label>
-              <input placeholder="Enter owner name" value={form.deal_owner}
-                onChange={(e) => setForm({ ...form, deal_owner: e.target.value })} />
-              
-              <label>Address</label>
-              <input placeholder="Enter address" value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              
-              <div className="row">
-                <div className="col">
-                  <label>Company</label>
-                  <input placeholder="Company" value={form.company}
-                    onChange={(e) => setForm({ ...form, company: e.target.value })} />
-                </div>
-                <div className="col">
-                  <label>Contact</label>
-                  <input placeholder="Contact #" value={form.contact}
-                    onChange={(e) => setForm({ ...form, contact: e.target.value })} />
-                </div>
-              </div>
-
-              <label>Amount (₱)</label>
-              <input type="number" placeholder="0.00" value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-              
-              <label>Description</label>
-              <textarea rows="3" placeholder="Additional details..." value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })} />
-
+              <input 
+                placeholder="Deal Name" 
+                value={form.deal_name} 
+                onChange={(e) => setForm({ ...form, deal_name: e.target.value })} 
+              />
+              <input 
+                placeholder="Deal Owner" 
+                value={form.deal_owner} 
+                onChange={(e) => setForm({ ...form, deal_owner: e.target.value })} 
+              />
+              <input 
+                placeholder="Address" 
+                value={form.address} 
+                onChange={(e) => setForm({ ...form, address: e.target.value })} 
+              />
+              <input 
+                placeholder="Company" 
+                value={form.company} 
+                onChange={(e) => setForm({ ...form, company: e.target.value })} 
+              />
+              <input 
+                placeholder="Contact" 
+                value={form.contact} 
+                onChange={(e) => setForm({ ...form, contact: e.target.value })} 
+              />
+              <input 
+                placeholder="Amount" 
+                type="number"
+                value={form.amount} 
+                onChange={(e) => setForm({ ...form, amount: e.target.value })} 
+              />
+              <textarea 
+                placeholder="Description" 
+                value={form.description} 
+                onChange={(e) => setForm({ ...form, description: e.target.value })} 
+              />
               <div className="modal-actions">
-                 <button className="cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
-                 <button className="save-btn" onClick={submitDeal}>
-                  {editing ? "Update Deal" : "Create Deal"}
+                <button className="cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="save-btn" onClick={submitDeal}>
+                  {editing ? "Save Changes" : "Create Deal"}
                 </button>
               </div>
             </div>
