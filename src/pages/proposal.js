@@ -13,28 +13,49 @@ const Proposal = () => {
     address: ""
   });
 
-  const columns = ["Lead", "Bidding", "Signature", "Hold", "Approved", "Expired"];
+  const columns = [
+    "Lead",
+    "Bidding",
+    "Signature",
+    "Hold",
+    "Approved",
+    "Expired"
+  ];
 
   useEffect(() => {
     fetchProjects();
+
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(fetchProjects, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchProjects = async () => {
-    const res = await axios.get("http://localhost:5000/api/projects");
-    if (res.data.success) setProjects(res.data.projects);
+    try {
+      const res = await axios.get("http://localhost:5000/api/projects");
+      if (res.data.success) setProjects(res.data.projects);
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+    }
   };
 
-  const isExpired = (date) => (new Date() - new Date(date)) / 86400000 > 30;
+  const isExpired = (date) =>
+    (new Date() - new Date(date)) / 86400000 > 30;
 
-  const getStatus = (p) => (isExpired(p.created_at) ? "Expired" : p.status);
+  const getStatus = (p) =>
+    isExpired(p.created_at) ? "Expired" : p.status;
 
   const createProject = async () => {
     if (!form.title) return alert("Title required");
 
-    await axios.post("http://localhost:5000/api/projects", form);
-    setForm({ title: "", client: "", address: "" });
-    setShowModal(false);
-    fetchProjects();
+    try {
+      await axios.post("http://localhost:5000/api/projects", form);
+      setForm({ title: "", client: "", address: "" });
+      setShowModal(false);
+      fetchProjects();
+    } catch (err) {
+      console.error("Failed to create project:", err);
+    }
   };
 
   const onDragStart = (e, id) => {
@@ -42,9 +63,10 @@ const Proposal = () => {
   };
 
   const onDrop = async (e, status) => {
-    const id = e.dataTransfer.getData("id");
+    const id = Number(e.dataTransfer.getData("id")); // convert to number
     if (!id || status === "Expired") return;
 
+    // Optimistic UI update
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status } : p))
     );
@@ -53,14 +75,16 @@ const Proposal = () => {
       await axios.put(`http://localhost:5000/api/projects/${id}/status`, { status });
     } catch (err) {
       console.error("Failed to update status:", err);
-      fetchProjects();
+      fetchProjects(); // revert if failed
     }
   };
 
   return (
     <div className="proposal-page">
+      {/* HEADER */}
       <div className="proposal-header">
         <h1>Proposals</h1>
+
         <div className="header-actions">
           <input
             className="search-input"
@@ -74,6 +98,7 @@ const Proposal = () => {
         </div>
       </div>
 
+      {/* KANBAN */}
       <div className="kanban-wrapper">
         <div className="kanban-board">
           {columns.map((col) => (
@@ -86,11 +111,13 @@ const Proposal = () => {
               <div className="column-header">
                 <span>● {col}</span>
                 <span className="count">
-                  {projects.filter(
-                    (p) =>
-                      getStatus(p) === col &&
-                      p.title.toLowerCase().includes(search.toLowerCase())
-                  ).length}
+                  {
+                    projects.filter(
+                      (p) =>
+                        getStatus(p) === col &&
+                        p.title.toLowerCase().includes(search.toLowerCase())
+                    ).length
+                  }
                 </span>
               </div>
 
@@ -110,7 +137,10 @@ const Proposal = () => {
                     <h4>{p.title}</h4>
                     <p>Client: {p.client || "N/A"}</p>
                     <p>Address: {p.address || "N/A"}</p>
-                    {isExpired(p.created_at) && <span className="expired-badge">EXPIRED</span>}
+
+                    {isExpired(p.created_at) && (
+                      <span className="expired-badge">EXPIRED</span>
+                    )}
                   </div>
                 ))}
             </div>
@@ -118,43 +148,12 @@ const Proposal = () => {
         </div>
       </div>
 
-      <div className="table-section">
-        <h2>All Proposals</h2>
-        <table className="proposal-table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Client</th>
-              <th>Address</th>
-              <th>Status</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects
-              .filter((p) => p.title.toLowerCase().includes(search.toLowerCase()))
-              .map((p) => {
-                const status = getStatus(p);
-                return (
-                  <tr key={p.id} className={status === "Expired" ? "expired-row" : ""}>
-                    <td>{p.title}</td>
-                    <td>{p.client || "N/A"}</td>
-                    <td>{p.address || "N/A"}</td>
-                    <td>
-                      <span className={`status-badge ${status.toLowerCase()}`}>{status}</span>
-                    </td>
-                    <td>{new Date(p.created_at).toLocaleDateString()}</td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-      </div>
-
+      {/* MODAL */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
             <h3>Create Project</h3>
+
             <input
               placeholder="Title"
               value={form.title}
@@ -170,6 +169,7 @@ const Proposal = () => {
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
+
             <div className="modal-actions">
               <button onClick={createProject}>Create</button>
               <button onClick={() => setShowModal(false)}>Cancel</button>
