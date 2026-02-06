@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../components/sidebar";
 import TopNav from "../components/topnav";
 import UserManagement from "./user";
+import Proposal from "./proposal";
 
 import {
   LayoutGrid,
@@ -132,16 +133,18 @@ export default function Dashboard() {
   }, []);
 
   /* Render page content */
-  const renderContent = () => {
-    switch (activeIndex) {
-      case 0:
-        return <DashboardOverview stats={stats} activities={activities} />;
-      case 5:
-        return <UserManagement currentUser={loggedInUser} />;
-      default:
-        return <h2>Coming Soon</h2>;
-    }
-  };
+const renderContent = () => {
+  switch (activeIndex) {
+    case 0:
+      return <DashboardOverview stats={stats} activities={activities} />;
+    case 1:
+      return <Proposal />;
+    case 5:
+      return <UserManagement currentUser={loggedInUser} />;
+    default:
+      return <h2>Coming Soon</h2>;
+  }
+};
 
   return (
     <div className="dashboard-layout">
@@ -154,43 +157,4 @@ export default function Dashboard() {
   );
 }
 
-// ================= KANBAN PROJECTS =================
-app.get("/api/projects", async (req, res) => {
-  try {
-    const rows = await queryDB(`
-      SELECT id, title, client, address, status, created_at
-      FROM projects
-      ORDER BY created_at DESC
-    `);
-    res.json({ success: true, projects: rows });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
-app.post("/api/projects", async (req, res) => {
-  const { title, client, address } = req.body;
-  if (!title) return res.json({ success: false, message: "Title is required" });
-
-  try {
-    await queryDB(
-      `INSERT INTO projects (title, client, address, status, paid_amount, due_amount)
-       VALUES (?, ?, ?, 'Lead', 0, 0)`,
-      [title, client || "", address || ""]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/api/projects/:id/status", async (req, res) => {
-  const { status } = req.body;
-  const { id } = req.params;
-  try {
-    await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
