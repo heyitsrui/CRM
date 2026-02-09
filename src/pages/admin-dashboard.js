@@ -5,6 +5,8 @@ import TopNav from "../components/topnav";
 import UserManagement from "./user";
 import MyProfile from "./myprofile";
 import Proposal from "./proposal";
+import Company from "./company";
+import Client from './client';
 
 import {
   LayoutGrid,
@@ -158,6 +160,10 @@ export default function Dashboard() {
       case 1:
         // Pass the actual user role to the Proposal component
         return <Proposal userRole={loggedInUser?.role} />;
+      case 'clients':
+        return <Client />;
+      case 'company':
+        return <Company />;
       case 5:
         return <UserManagement currentUser={loggedInUser} />;
       case 99:
