@@ -195,47 +195,23 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ================= USERS =================
-
-// Get all users
 app.get("/api/users", async (req, res) => {
   try {
-    const users = await queryDB(
-      "SELECT id, name, email, role, phone, about, avatar FROM users"
-    );
+    const users = await queryDB("SELECT id, name, email, role, phone FROM users");
     res.json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching users" });
   }
 });
 
-// ✅ Get single user by ID (needed for MyProfile.js)
-app.get("/api/users/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const rows = await queryDB(
-      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
-      [id]
-    );
-    if (!rows || rows.length === 0)
-      return res.status(404).json({ success: false, message: "User not found" });
-    res.json({ success: true, user: rows[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Create a new user
 app.post("/api/users", async (req, res) => {
   const { name, email, phone, password, role } = req.body;
   try {
     const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-    if (existing.length > 0)
-      return res.status(400).json({ success: false, message: "Email already exists" });
+    if (existing.length > 0) return res.status(400).json({ success: false, message: "Email already exists" });
 
-    await queryDB(
-      "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
-      [name, email, phone, password, role]
-    );
+    await queryDB("INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
+      [name, email, phone, password, role]);
 
     res.json({ success: true, message: "User created successfully" });
   } catch (err) {
@@ -243,42 +219,17 @@ app.post("/api/users", async (req, res) => {
   }
 });
 
-// Update user (general)
 app.put("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   const { name, email, role, phone } = req.body;
   try {
-    await queryDB(
-      "UPDATE users SET name=?, email=?, role=?, phone=? WHERE id=?",
-      [name, email, role, phone, id]
-    );
+    await queryDB("UPDATE users SET name=?, email=?, role=?, phone=? WHERE id=?", [name, email, role, phone, id]);
     res.json({ success: true, message: "User updated successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// Update user profile including about and avatar (specific for MyProfile.js)
-app.put("/api/users/:id/profile", async (req, res) => {
-  const { id } = req.params;
-  const { name, phone, about, avatar } = req.body;
-
-  try {
-    await queryDB(
-      "UPDATE users SET name=?, phone=?, about=?, avatar=? WHERE id=?",
-      [name, phone, about, avatar, id]
-    );
-    const updatedUser = await queryDB(
-      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
-      [id]
-    );
-    res.json({ success: true, user: updatedUser[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Delete user
 app.delete("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -373,3 +324,91 @@ app.delete("/api/projects/:id", async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
+// ================= COMPANIES =================
+app.get("/api/companies", async (req, res) => {
+  try {
+    const rows = await queryDB("SELECT id, company_name as name, company_owner as owner, types, email, description FROM company ORDER BY created_at DESC");
+    res.json({ success: true, companies: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/companies", async (req, res) => {
+  // We extract the names used in your React 'formData'
+  const { name, owner, types, email, description } = req.body; 
+  
+  try {
+    await queryDB(
+      // We map them to your HeidiSQL column names: company_name and company_owner
+      "INSERT INTO company (company_name, company_owner, types, email, description) VALUES (?, ?, ?, ?, ?)",
+      [name, owner, types, email, description]
+    );
+    res.json({ success: true, message: "Company added successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= DELETE COMPANY =================
+app.delete("/api/companies/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await queryDB("DELETE FROM company WHERE id = ?", [id]);
+    
+    // result.affectedRows tells us if something was actually deleted
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: "Company deleted successfully" });
+    } else {
+      res.status(404).json({ success: false, error: "Company not found" });
+    }
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= CLIENTS =================
+
+// GET all clients
+app.get("/api/clients", async (req, res) => {
+  try {
+    const rows = await queryDB("SELECT * FROM clients ORDER BY id ASC");
+    res.json({ success: true, clients: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST new client
+app.post("/api/clients", async (req, res) => {
+  const { clientName, companyName, email, salesRep } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO clients (clientName, companyName, email, salesRep) VALUES (?, ?, ?, ?)",
+      [clientName, companyName, email, salesRep]
+    );
+    res.json({ success: true, message: "Client added successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE client
+app.delete("/api/clients/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await queryDB("DELETE FROM clients WHERE id = ?", [id]);
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: "Client deleted" });
+    } else {
+      res.status(404).json({ success: false, error: "Client not found" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
