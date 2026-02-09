@@ -80,7 +80,8 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
               <div className="sub-menu">
                 {item.subItems.map((sub, subIdx) => (
                   <button 
-                    key={subIdx} 
+                    key={subIdx}
+                    onClick={() => setActiveIndex(sub.toLowerCase())}
                     className={`sub-nav-item ${sub === 'View all Task' || sub === 'Project View' ? 'sub-active' : ''}`}
                   >
                     {sub}
@@ -96,4 +97,3 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
 };
 
 export default Sidebar;
-
