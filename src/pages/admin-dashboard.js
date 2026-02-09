@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar";
 import TopNav from "../components/topnav";
 import UserManagement from "./user";
-import MyProfile from "./myprofile"; // Import the new profile component
+import MyProfile from "./myprofile";
 import Proposal from "./proposal";
 
 import {
@@ -20,45 +21,35 @@ const DashboardOverview = ({ stats, activities }) => (
     {/* Stats Cards */}
     <div className="stats-grid">
       <div className="stat-card">
-        <div className="icon-circle blue">
-          <LayoutGrid size={20} />
-        </div>
+        <div className="icon-circle blue"><LayoutGrid size={20} /></div>
         <div>
           <h3>{stats?.leads || 0}</h3>
           <p>Projects in Lead</p>
         </div>
       </div>
       <div className="stat-card">
-        <div className="icon-circle yellow">
-          <FileText size={20} />
-        </div>
+        <div className="icon-circle yellow"><FileText size={20} /></div>
         <div>
           <h3>{stats?.bidding || 0}</h3>
           <p>Projects in Bidding</p>
         </div>
       </div>
       <div className="stat-card">
-        <div className="icon-circle green">
-          <FileText size={20} />
-        </div>
+        <div className="icon-circle green"><FileText size={20} /></div>
         <div>
           <h3>{stats?.signature || 0}</h3>
           <p>Projects Signature</p>
         </div>
       </div>
       <div className="stat-card">
-        <div className="icon-circle red">
-          <FileText size={20} />
-        </div>
+        <div className="icon-circle red"><FileText size={20} /></div>
         <div>
           <h3>{stats?.hold || 0}</h3>
           <p>Projects on Hold</p>
         </div>
       </div>
       <div className="stat-card">
-        <div className="icon-circle teal">
-          <Users size={20} />
-        </div>
+        <div className="icon-circle teal"><Users size={20} /></div>
         <div>
           <h3>{stats?.approved || 0}</h3>
           <p>Approved Projects</p>
@@ -71,14 +62,14 @@ const DashboardOverview = ({ stats, activities }) => (
       <div className="money-card">
         <DollarSign className="money-icon" />
         <div>
-          <h3>${(stats?.totalPaid || 0).toLocaleString()}</h3>
+          <h3>₱{(stats?.totalPaid || 0).toLocaleString()}</h3>
           <p>Total Paid Amount</p>
         </div>
       </div>
       <div className="money-card">
         <DollarSign className="money-icon" />
         <div>
-          <h3>${(stats?.totalDue || 0).toLocaleString()}</h3>
+          <h3>₱{(stats?.totalDue || 0).toLocaleString()}</h3>
           <p>Total Due Amount</p>
         </div>
       </div>
@@ -93,7 +84,7 @@ const DashboardOverview = ({ stats, activities }) => (
 
       <div className="activity-box">
         <h3>Recent Activity</h3>
-        {activities.length > 0 ? (
+        {activities && activities.length > 0 ? (
           activities.map((act, i) => (
             <div key={i} className="activity-item">
               <p className="act-title">{act.title}</p>
@@ -115,38 +106,58 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
+  const navigate = useNavigate();
 
-  // Fetch user from localStorage
+  // 1. AUTH & SESSION CHECK
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("loggedInUser"));
-    if (user) setLoggedInUser(user);
-  }, []);
+    if (!user) {
+      navigate("/");
+    } else {
+      setLoggedInUser(user);
+    }
+  }, [navigate]);
 
-  // Fetch API data
+  // 2. AUTO-REFLECT DATA FETCHING
+  // This useEffect runs on mount AND every time activeIndex changes
   useEffect(() => {
-    fetch("http://localhost:5000/api/dashboard-stats")
-      .then((res) => res.json())
-      .then((data) => data.success && setStats(data.stats))
-      .catch(console.error);
+    if (!loggedInUser) return;
 
-    fetch("http://localhost:5000/api/recent-activity")
-      .then((res) => res.json())
-      .then((data) => data.success && setActivities(data.activities))
-      .catch(console.error);
-  }, []);
+    const fetchData = async () => {
+      try {
+        // Fetch Stats
+        const statsRes = await fetch("http://localhost:5000/api/dashboard-stats");
+        const statsData = await statsRes.json();
+        if (statsData.success) setStats(statsData.stats);
 
-  /**
-   * Render logic based on activeIndex
-   * 0: Overview
-   * 5: User Management
-   * 99: My Profile (Triggered from TopNav)
-   */
+        // Fetch Activity
+        const activityRes = await fetch("http://localhost:5000/api/recent-activity");
+        const activityData = await activityRes.json();
+        if (activityData.success) setActivities(activityData.activities);
+      } catch (err) {
+        console.error("Error refreshing dashboard data:", err);
+      }
+    };
+
+    // Only fetch data if we are looking at the Overview tab (Index 0)
+    if (activeIndex === 0) {
+      fetchData();
+    }
+  }, [loggedInUser, activeIndex]); // Dependency array ensures refresh on tab switch
+
+  // 3. LOGOUT HANDLER
+  const handleLogout = () => {
+    localStorage.removeItem("loggedInUser");
+    navigate("/");
+  };
+
   const renderContent = () => {
     switch (activeIndex) {
       case 0:
         return <DashboardOverview stats={stats} activities={activities} />;
       case 1:
-        return <Proposal/>
+        // Pass the actual user role to the Proposal component
+        return <Proposal userRole={loggedInUser?.role} />;
       case 5:
         return <UserManagement currentUser={loggedInUser} />;
       case 99:
@@ -163,11 +174,13 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-layout">
-      {/* Sidebar handles main navigation indices (0, 1, 2, etc.) */}
-      <Sidebar activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
+      <Sidebar 
+        activeIndex={activeIndex} 
+        setActiveIndex={setActiveIndex} 
+        onLogout={handleLogout} 
+      />
       
       <main className="main-area">
-        {/* Pass setActiveIndex as 'onNavigate' to handle profile clicks */}
         <TopNav 
           loggedInUser={loggedInUser} 
           onNavigate={setActiveIndex} 
