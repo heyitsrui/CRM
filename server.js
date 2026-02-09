@@ -316,40 +316,10 @@ app.delete("/api/projects/:id", async (req, res) => {
     await queryDB("DELETE FROM projects WHERE id=?", [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(0).json({ success: false, error: err.message });
-  }
-});
-
-// ================= SERVER =================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-// ================= COMPANIES =================
-app.get("/api/companies", async (req, res) => {
-  try {
-    const rows = await queryDB("SELECT id, company_name as name, company_owner as owner, types, email, description FROM company ORDER BY created_at DESC");
-    res.json({ success: true, companies: rows });
-  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post("/api/companies", async (req, res) => {
-  // We extract the names used in your React 'formData'
-  const { name, owner, types, email, description } = req.body; 
-  
-  try {
-    await queryDB(
-      // We map them to your HeidiSQL column names: company_name and company_owner
-      "INSERT INTO company (company_name, company_owner, types, email, description) VALUES (?, ?, ?, ?, ?)",
-      [name, owner, types, email, description]
-    );
-    res.json({ success: true, message: "Company added successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
 // ================= DELETE COMPANY =================
 app.delete("/api/companies/:id", async (req, res) => {
@@ -412,3 +382,75 @@ app.delete("/api/clients/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ================= TASKS API =================
+
+
+// Get all tasks
+app.get("/api/tasks", async (req, res) => {
+  try {
+    const tasks = await queryDB("SELECT * FROM tasks ORDER BY created_at DESC");
+    res.json({ success: true, tasks });
+  } catch (err) {
+    console.error("Fetch Tasks Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Add a new task
+app.post("/api/tasks", async (req, res) => {
+  const { title, priority, deadline, user_id } = req.body;
+  
+  // Debugging: This will show in your terminal if user_id is missing
+  console.log("Adding Task for User ID:", user_id);
+
+  if (!user_id) {
+    return res.status(400).json({ success: false, message: "User ID is required to create a task" });
+  }
+
+  try {
+    const result = await queryDB(
+      "INSERT INTO tasks (title, priority, deadline, user_id, status) VALUES (?, ?, ?, ?, 'Pending')",
+      [title, priority, deadline || null, user_id]
+    );
+    
+    // MariaDB/MySQL returns insertId differently depending on the driver version
+    // If result.insertId is undefined, try result.affectedRows or similar
+    const newId = result.insertId || result.id;
+    const newTask = await queryDB("SELECT * FROM tasks WHERE id = ?", [newId]);
+    
+    res.json({ success: true, task: newTask[0] });
+  } catch (err) {
+    console.error("Add Task DB Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update task status
+app.put("/api/tasks/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    await queryDB("UPDATE tasks SET status = ? WHERE id = ?", [status, id]);
+    res.json({ success: true, message: "Task status updated" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete a task
+app.delete("/api/tasks/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await queryDB("DELETE FROM tasks WHERE id = ?", [id]);
+    res.json({ success: true, message: "Task deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= SERVER =================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
