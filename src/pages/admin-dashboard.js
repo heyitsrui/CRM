@@ -5,6 +5,7 @@ import TopNav from "../components/topnav";
 import UserManagement from "./user";
 import MyProfile from "./myprofile";
 import Proposal from "./proposal";
+import Tasks from "./tasks";
 import Company from "./company";
 import Client from './client';
 
@@ -152,8 +153,15 @@ export default function Dashboard() {
     localStorage.removeItem("loggedInUser");
     navigate("/");
   };
+  
 
   const renderContent = () => {
+
+  const refreshUserData = () => {
+  const updatedUser = JSON.parse(localStorage.getItem("loggedInUser"));
+  setLoggedInUser(updatedUser);
+  
+};
     switch (activeIndex) {
       case 0:
         return <DashboardOverview stats={stats} activities={activities} />;
@@ -164,10 +172,12 @@ export default function Dashboard() {
         return <Client />;
       case 'company':
         return <Company />;
+      case 3:
+        return <Tasks currentUser={loggedInUser} />;
       case 5:
         return <UserManagement currentUser={loggedInUser} />;
-      case 99:
-        return <MyProfile user={loggedInUser} />;
+      case 99: 
+        return <MyProfile user={loggedInUser} onProfileUpdate={refreshUserData} />;
       default:
         return (
           <div className="dashboard-content">
