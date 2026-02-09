@@ -33,7 +33,7 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
         { label: 'Contacts', 
       icon: <BarChart3 size={20} />,
       isDropdown: true,
-      subItems: ['Clients', 'Suppliers']
+      subItems: ['Clients', 'Company']
     },
     { label: 'User / Employee', icon: <Users size={20} /> },
     { label: 'Logout', icon: <LogOut size={20} />, isLogout: true },
@@ -96,3 +96,4 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
 };
 
 export default Sidebar;
+
