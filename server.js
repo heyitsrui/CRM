@@ -195,23 +195,47 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ================= USERS =================
+
+// Get all users
 app.get("/api/users", async (req, res) => {
   try {
-    const users = await queryDB("SELECT id, name, email, role, phone FROM users");
+    const users = await queryDB(
+      "SELECT id, name, email, role, phone, about, avatar FROM users"
+    );
     res.json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching users" });
   }
 });
 
+// ✅ Get single user by ID (needed for MyProfile.js)
+app.get("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rows = await queryDB(
+      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
+      [id]
+    );
+    if (!rows || rows.length === 0)
+      return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, user: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Create a new user
 app.post("/api/users", async (req, res) => {
   const { name, email, phone, password, role } = req.body;
   try {
     const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-    if (existing.length > 0) return res.status(400).json({ success: false, message: "Email already exists" });
+    if (existing.length > 0)
+      return res.status(400).json({ success: false, message: "Email already exists" });
 
-    await queryDB("INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
-      [name, email, phone, password, role]);
+    await queryDB(
+      "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
+      [name, email, phone, password, role]
+    );
 
     res.json({ success: true, message: "User created successfully" });
   } catch (err) {
@@ -219,17 +243,42 @@ app.post("/api/users", async (req, res) => {
   }
 });
 
+// Update user (general)
 app.put("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   const { name, email, role, phone } = req.body;
   try {
-    await queryDB("UPDATE users SET name=?, email=?, role=?, phone=? WHERE id=?", [name, email, role, phone, id]);
+    await queryDB(
+      "UPDATE users SET name=?, email=?, role=?, phone=? WHERE id=?",
+      [name, email, role, phone, id]
+    );
     res.json({ success: true, message: "User updated successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
+// Update user profile including about and avatar (specific for MyProfile.js)
+app.put("/api/users/:id/profile", async (req, res) => {
+  const { id } = req.params;
+  const { name, phone, about, avatar } = req.body;
+
+  try {
+    await queryDB(
+      "UPDATE users SET name=?, phone=?, about=?, avatar=? WHERE id=?",
+      [name, phone, about, avatar, id]
+    );
+    const updatedUser = await queryDB(
+      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
+      [id]
+    );
+    res.json({ success: true, user: updatedUser[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Delete user
 app.delete("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -323,3 +372,4 @@ app.delete("/api/projects/:id", async (req, res) => {
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
