@@ -31,7 +31,11 @@ const Sidebar = ({ activeIndex, setActiveIndex }) => {
       isDropdown: true,
       subItems: ['View all Task', 'In Progress', 'Completed'] 
     },
-    { label: 'Client / Supplier', icon: <BarChart3 size={20} /> },
+    { label: 'Contacts', 
+      icon: <BarChart3 size={20} />,
+      isDropdown: true,
+      subItems: ['Clients', 'Suppliers']
+    },
     { label: 'User / Employee', icon: <Users size={20} /> },
     { label: 'Logout', icon: <LogOut size={20} />, isLogout: true },
   ];
