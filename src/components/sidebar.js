@@ -15,7 +15,7 @@ import '../styles/dashboard.css';
 const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
   const [openMenus, setOpenMenus] = useState({});
 
-  const menuItems = [
+  const menuItems = [ 
     { label: 'Dashboard', icon: <Home size={20} /> },
     { label: 'Proposal', icon: <Lightbulb size={20} /> },
     { 
@@ -30,7 +30,8 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
       isDropdown: true,
       subItems: ['View all Task', 'In Progress', 'Completed'] 
     },
-        { label: 'Contacts', 
+    { 
+      label: 'Contacts', 
       icon: <BarChart3 size={20} />,
       isDropdown: true,
       subItems: ['Clients', 'Company']
@@ -58,7 +59,7 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
             <button
               onClick={() => {
                 if (item.isLogout) {
-                  onLogout(); // Triggers the logout function passed from Dashboard
+                  onLogout();
                 } else if (item.isDropdown) {
                   toggleDropdown(item.label);
                 } else {
@@ -75,7 +76,8 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
                 </span>
               )}
             </button>
-
+            
+            {/* Sub-menu logic */}
             {item.isDropdown && openMenus[item.label] && (
               <div className="sub-menu">
                 {item.subItems.map((sub, subIdx) => (
