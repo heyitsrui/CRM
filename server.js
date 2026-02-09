@@ -13,7 +13,7 @@ app.use(cors());
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "",
+  password: process.env.DB_PASS || "12202003",
   database: process.env.DB_NAME || "crm",
   connectionLimit: 5,
 });
@@ -316,7 +316,7 @@ app.delete("/api/projects/:id", async (req, res) => {
     await queryDB("DELETE FROM projects WHERE id=?", [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(0).json({ success: false, error: err.message });
   }
 });
 
