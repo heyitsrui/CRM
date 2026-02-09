@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
-const Sidebar = ({ activeIndex, setActiveIndex }) => {
-  // Track open state for multiple menus by their label
+const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
   const [openMenus, setOpenMenus] = useState({});
 
   const menuItems = [
@@ -31,7 +30,7 @@ const Sidebar = ({ activeIndex, setActiveIndex }) => {
       isDropdown: true,
       subItems: ['View all Task', 'In Progress', 'Completed'] 
     },
-    { label: 'Contacts', 
+        { label: 'Contacts', 
       icon: <BarChart3 size={20} />,
       isDropdown: true,
       subItems: ['Clients', 'Suppliers']
@@ -58,9 +57,11 @@ const Sidebar = ({ activeIndex, setActiveIndex }) => {
           <React.Fragment key={index}>
             <button
               onClick={() => {
-                if (item.isDropdown) {
+                if (item.isLogout) {
+                  onLogout(); // Triggers the logout function passed from Dashboard
+                } else if (item.isDropdown) {
                   toggleDropdown(item.label);
-                } else if (!item.isLogout) {
+                } else {
                   setActiveIndex(index);
                 }
               }}
@@ -75,7 +76,6 @@ const Sidebar = ({ activeIndex, setActiveIndex }) => {
               )}
             </button>
 
-            {/* Sub-menu rendering */}
             {item.isDropdown && openMenus[item.label] && (
               <div className="sub-menu">
                 {item.subItems.map((sub, subIdx) => (
