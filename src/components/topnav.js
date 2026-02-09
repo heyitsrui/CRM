@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Lock } from "lucide-react"; 
+import { User, Lock, } from "lucide-react"; 
 
-const TopNav = ({ loggedInUser, onNavigate }) => {
+const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -16,32 +16,30 @@ const TopNav = ({ loggedInUser, onNavigate }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Handle clicking "My Profile"
   const handleProfileClick = () => {
-    if (onNavigate) {
-      onNavigate(99); // This matches the case in admin-dashboard.js
-    }
-    setIsOpen(false); // Close dropdown after selection
+    if (onNavigate) onNavigate(99); 
+    setIsOpen(false);
   };
 
   return (
     <header className="top-nav">
       <div className="user-block" ref={dropdownRef}>
-        <div className="user-info" onClick={() => setIsOpen(!isOpen)}>
-          <span className="user-name">{loggedInUser?.name || "Christian Barcoma"}</span>
-          <span className="user-email">{loggedInUser?.email || "cobarcoma@gmail.com"}</span>
+        <div className="user-info" onClick={() => setIsOpen(!isOpen)} >
+          {/* Dynamically reflects name from profile update */}
+          <span className="user-name" style={{fontSize: "20px", fontFamil: "Poppiins"}}>{loggedInUser?.name || "User"}</span>
+          <span className="user-email">{loggedInUser?.email}</span>
         </div>
         
         <div className="user-avatar" onClick={() => setIsOpen(!isOpen)}>
-          <img
-            src={loggedInUser?.avatar || "https://via.placeholder.com/40"}
-            alt="User"
+          <img 
+            src={loggedInUser?.avatar || "default-avatar.png"} 
+            alt="User" 
+            className="user-avatar-img"
           />
         </div>
 
-        {/* The Dropdown Menu */}
         {isOpen && (
-          <div className="profile-dropdown">
+          <div className="profile-dropdown" >
             <button className="dropdown-item" onClick={handleProfileClick}>
               <User size={18} />
               <span>My Profile</span>
