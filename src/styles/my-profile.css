@@ -1,6 +1,6 @@
-/* ===============================
-   FONTS
-=============================== */
+/* =================================================== 
+   FONTS & ROOT VARIABLES 
+   =================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@800&display=swap');
 
@@ -9,21 +9,21 @@
   src: url('https://fonts.cdnfonts.com/s/14237/GlacialIndifference-Regular.woff') format('woff');
 }
 
-/* ===============================
-   ROOT VARIABLES
-=============================== */
 :root {
   --sidebar-width: 250px;
   --brand-teal: #3ba3a5;
-  --bg-main: #f8f9fa;
+  --brand-blue: #0066b2;
+  --brand-blue-hover: #003d80;
+  --bg-main: #f4f7f6;
   --bg-white: #ffffff;
   --text-primary: #333;
-  --text-secondary: #8e8e8e;
+  --text-secondary: #666;
+  --gray-pill: #e0e0e0;
 }
 
-/* ===============================
-   GLOBAL RESET
-=============================== */
+/* =================================================== 
+   GLOBAL RESET 
+   =================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -33,178 +33,217 @@
 body {
   font-family: 'Poppins', sans-serif;
   background-color: var(--bg-main);
+  color: var(--text-primary);
 }
 
-
-/* Container styling */
-.profile-card {
-  background: white;
-  border-radius: 30px;
-  padding: 40px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  max-width: 900px;
-  margin: 20px auto;
-}
-
-
-/* Header / Top Section */
-.profile-header {
+/* =================================================== 
+   PROFILE CONTAINER & CARD 
+   =================================================== */
+.profile-container {
   display: flex;
-  gap: 30px;
+  justify-content: center;
+  padding: 40px;
+}
+
+.profile-card {
+  background: var(--bg-white);
+  width: 100%;
+  max-width: 900px;
+  border-radius: 30px; /* From your first integration block */
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =================================================== 
+   HEADER SECTION 
+   =================================================== */
+.profile-header-row {
+  display: flex;
+  gap: 40px;
   align-items: flex-start;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  width: 100%;
   position: relative;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 25px;
 }
 
 /* Avatar Styling */
-.avatar-container {
-  position: relative;
-  width: 140px;
-  height: 140px;
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.avatar-image {
-  width: 100%;
-  height: 100%;
+.avatar-circle {
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
-  object-fit: cover;
-  border: 4px solid #f0f7ff;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 5px solid #fff;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
   background-color: #f9f9f9;
 }
 
-.upload-icon {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: #0066b2;
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+
+/* Camera Upload Icon Overlay */
+.upload-icon-label {
+  margin-top: -35px;
+  margin-left: 100px;
+  background: var(--brand-blue);
   color: white;
-  padding: 8px;
+  padding: 10px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 2;
 }
 
-/* Info Labels and Text */
-.info-section h1 {
-  font-size: 28px;
-  margin: 0 0 5px 0;
+.upload-icon-label span {
+  display: none; /* Keep it clean with just the icon */
+}
+
+/* =================================================== 
+   INFO SECTION & INPUTS 
+   =================================================== */
+.info-section { 
+  flex-grow: 1; 
+}
+
+.profile-name { 
+  font-size: 32px; 
+  font-weight: 800; 
+  margin-bottom: 15px;
   color: #000;
 }
 
-.info-row {
+.details-grid {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  row-gap: 12px;
   font-size: 16px;
-  margin: 2px 0;
-  color: #666;
 }
 
-.info-label {
-  font-weight: 500;
-  color: #333;
+.label { 
+  font-weight: 700; 
+  color: var(--text-primary); 
 }
 
-/* Buttons */
+.value { 
+  color: var(--text-secondary); 
+}
+
+/* Edit Mode Inputs */
+.grid-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  width: 100%;
+  font-family: inherit;
+}
+
 .edit-btn {
-  position: absolute;
-  right: 0;
-  top: 10px;
-  background: #0066b2;
+  background-color: var(--brand-blue);
   color: white;
   border: none;
-  padding: 10px 30px;
+  padding: 12px 30px;
   border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
   text-transform: uppercase;
+  transition: 0.3s;
 }
 
-/* Permissions Badges */
-.permissions-container {
-  margin-top: 30px;
-}
-
-.badge-group {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-  margin-top: 15px;
-}
-
-.permission-badge {
-  background: #e0e0e0;
-  color: #444;
-  padding: 12px 25px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* About / Description Area */
-.about-section {
-  margin-top: 30px;
-}
-
-.description-box {
-  width: 100%;
-  min-height: 120px;
-  background: #e0e0e0;
-  border: none;
-  border-radius: 15px;
-  padding: 20px;
-  margin-top: 15px;
-  resize: vertical;
-  font-size: 15px;
-  color: #555;
-}
-/* Add to your existing Profile.css */
-
-.avatar-image-placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 4px solid #f0f7ff;
-}
-
-.edit-form-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.input-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.input-group label {
-  font-weight: bold;
-  min-width: 60px;
-}
-
-.input-group input {
-  padding: 5px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  flex: 1;
+.edit-btn:hover { 
+  background-color: var(--brand-blue-hover); 
 }
 
 .save-mode {
-  background: #28a745 !important; /* Green for Save */
+  background-color: #28a745 !important; /* Green for Save */
 }
 
-.font-light {
-  font-weight: 400;
+/* =================================================== 
+   PERMISSIONS & ABOUT SECTIONS 
+   =================================================== */
+.divider { 
+  border: 0; 
+  border-top: 1px solid #eee; 
+  margin: 10px 0; 
+}
+
+.profile-section h3 { 
+  margin-bottom: 15px; 
+  font-size: 20px; 
+  font-weight: 700;
+}
+
+.permissions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.permission-pill {
+  background: var(--gray-pill);
+  padding: 12px 25px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #444;
+  font-weight: 600;
+}
+
+.about-box {
+  background: var(--gray-pill);
+  padding: 25px;
+  border-radius: 15px;
+  min-height: 100px;
+  margin-top: 10px;
+}
+
+.about-box p {
   color: #555;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.6;
 }
 
-.uppercase-text {
-  text-transform: uppercase;
+.about-textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 15px;
+  background: white;
+  font-family: inherit;
+  resize: vertical;
+  font-size: 16px;
+  color: #333;
 }
+
+/* UTILITY CLASSES */
+.font-light { font-weight: 400; color: #555; }
+.uppercase-text { text-transform: uppercase; }
