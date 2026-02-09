@@ -72,7 +72,7 @@ export default function UserManagement({ currentUser }) {
   // Edit user
   const handleEdit = (user) => {
     setEditingId(user.id);
-    setForm({ name: user.name, email: user.email, phone:user.phone, role: user.role, password: "" });
+    setForm({ name: user.name, email: user.email, role: user.role, password: "" });
   };
 
   // Filter users by search
@@ -127,6 +127,7 @@ export default function UserManagement({ currentUser }) {
 
       <div className="table-controls">
         <input
+          style={{width: "1305px"}}
           type="text"
           placeholder="Search users..."
           value={search}
@@ -136,8 +137,7 @@ export default function UserManagement({ currentUser }) {
 
       <table className="user-table">
         <thead>
-          <tr>
-            <th>ID</th>
+          <tr style={{textAlign: "left"}}>
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
@@ -148,7 +148,6 @@ export default function UserManagement({ currentUser }) {
         <tbody>
           {filteredUsers.map((user) => (
             <tr key={user.id}>
-              <td>{user.id}</td>
               <td>{user.name}</td>
               <td>{user.email}</td>
               <td>{user.phone}</td>
