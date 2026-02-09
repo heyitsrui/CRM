@@ -3,6 +3,7 @@ import Sidebar from "../components/sidebar";
 import TopNav from "../components/topnav";
 import UserManagement from "./user";
 import MyProfile from "./myprofile"; // Import the new profile component
+import Proposal from "./proposal";
 
 import {
   LayoutGrid,
@@ -144,6 +145,8 @@ export default function Dashboard() {
     switch (activeIndex) {
       case 0:
         return <DashboardOverview stats={stats} activities={activities} />;
+      case 1:
+        return <Proposal/>
       case 5:
         return <UserManagement currentUser={loggedInUser} />;
       case 99:
