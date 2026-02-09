@@ -14,7 +14,7 @@
 =============================== */
 :root {
   --sidebar-width: 250px;
-  --brand-teal: #3ba3a5;
+  --brand-teal: #007bff;
   --bg-main: #f8f9fa;
   --bg-white: #ffffff;
   --text-primary: #333;
@@ -56,11 +56,13 @@ body {
   height: calc(100vh - 70px); /* fills remaining space */
 }
 
+
+
 /* ===============================
    SIDEBAR
 =============================== */
 .sidebar {
-  width: 260px;
+  width: 280px;
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
   display: flex;
@@ -72,7 +74,9 @@ body {
   overflow-y: auto; /* Add scroll if content overflows */
   z-index: 60;
   padding-top: 20px; /* optional spacing from top */
+  font-family: 'Poppins';
 }
+
 
 
 /* Logo */
@@ -97,18 +101,17 @@ body {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
   width: 100%;
   padding: 12px 15px;
   border: none;
   background: none;
   cursor: pointer;
   border-radius: 10px;
-
   font-family: 'Poppins';
   font-weight: 600;
   color: #555;
-
+  font-size: 16px;
   transition: all 0.2s ease;
 }
 
@@ -131,15 +134,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  margin-left: 20px;
+  margin-right: 20px;
 }
+
+
 /* ===============================
    TOP NAVBAR
 =============================== */
-/* ===============================
-   TOP NAVBAR
-=============================== */
+
 .top-nav {
-  height: 70px;
+  height: 90px;
   width: calc(100% - 260px); /* Sidebar width subtracted */
   background: #ffffff;
   display: flex;
@@ -164,7 +169,7 @@ body {
 .user-block {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 25px;
   cursor: pointer;
   position: relative; /* Essential for dropdown positioning */
   padding: 5px 10px;
@@ -181,14 +186,15 @@ body {
 }
 
 .user-name {
-  font-family: 'League Spartan', sans-serif;
   font-weight: 700;
   font-size: 14px;
+  font-family: 'Poppins';
 }
 
 .user-email {
-  font-size: 12px;
+  font-size: 20px;
   color: var(--text-secondary);
+  font-family: 'Poppins';
 }
 
 /* Avatar */
@@ -275,6 +281,9 @@ body {
   grid-template-columns: repeat(5, 1fr);
   gap: 20px;
   margin-bottom: 20px;
+  padding-left: 20px;
+  padding-top: 20px;
+  padding-right: 20px;
 }
 
 .stat-card {
@@ -314,6 +323,8 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 20px;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .money-card {
@@ -333,6 +344,8 @@ body {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
   gap: 20px;
+    padding-left: 20px;
+  padding-right: 20px;
 }
 
 .chart-box,
@@ -415,7 +428,6 @@ body {
   object-fit: cover;
   border: 1px solid #eee;
 }
-
 
 .view-header-tabs {
   display: flex;
