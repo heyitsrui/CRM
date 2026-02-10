@@ -6,14 +6,16 @@ const cors = require("cors");
 const mariadb = require("mariadb");
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cors());
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // ================= MariaDB Connection =================
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "12202003",
+  password: process.env.DB_PASS || "Charles@123",
   database: process.env.DB_NAME || "crm",
   connectionLimit: 5,
 });
@@ -197,34 +199,49 @@ app.get("/api/dashboard-stats", async (req, res) => {
 // ================= USERS =================
 app.get("/api/users", async (req, res) => {
   try {
-    const users = await queryDB("SELECT id, name, email, role, phone FROM users");
+    const users = await queryDB(
+      "SELECT id, name, email, role, phone, about, avatar FROM users"
+    );
     res.json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching users" });
   }
 });
 
-app.post("/api/users", async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
+app.get("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
   try {
-    const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-    if (existing.length > 0) return res.status(400).json({ success: false, message: "Email already exists" });
-
-    await queryDB("INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
-      [name, email, phone, password, role]);
-
-    res.json({ success: true, message: "User created successfully" });
+    const rows = await queryDB(
+      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
+      [id]
+    );
+    if (!rows || rows.length === 0)
+      return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, user: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.put("/api/users/:id", async (req, res) => {
+app.put("/api/users/:id/profile", async (req, res) => {
   const { id } = req.params;
-  const { name, email, role, phone } = req.body;
+  const { name, phone, about, avatar } = req.body; 
+  if (avatar && avatar.length > 7_000_000) {
+    return res.status(400).json({
+      success: false,
+      message: "Profile image too large. Please upload a smaller image."
+    });
+  }
   try {
-    await queryDB("UPDATE users SET name=?, email=?, role=?, phone=? WHERE id=?", [name, email, role, phone, id]);
-    res.json({ success: true, message: "User updated successfully" });
+    await queryDB(
+      "UPDATE users SET name=?, phone=?, about=?, avatar=? WHERE id=?",
+      [name, phone, about, avatar, id]
+    );
+    const updatedUser = await queryDB(
+      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
+      [id]
+    );
+    res.json({ success: true, user: updatedUser[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -258,7 +275,6 @@ app.get("/api/projects", async (req, res) => {
 app.post("/api/projects", async (req, res) => {
   const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
   if (!deal_name) return res.json({ success: false, message: "Deal Name is required" });
-
   try {
     const result = await queryDB(
       `INSERT INTO projects
@@ -266,9 +282,7 @@ app.post("/api/projects", async (req, res) => {
        VALUES (?, ?, ?, 'Lead', 0, 0, ?, ?, ?, ?, NOW())`,
       [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0]
     );
-
     const project = await queryDB("SELECT * FROM projects WHERE id = ?", [result.insertId]);
-
     res.json({ success: true, project: project[0] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -282,28 +296,17 @@ app.put("/api/projects/:id/status", async (req, res) => {
     await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(0).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Update Project Route (Fixed handling of empty/optional fields)
 app.put("/api/projects/:id", async (req, res) => {
   const { id } = req.params;
   const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
-
   try {
     await queryDB(
       `UPDATE projects SET deal_name=?, deal_owner=?, address=?, description=?, contact=?, company=?, amount=? WHERE id=?`,
-      [
-        deal_name, 
-        deal_owner || "", 
-        address || "", 
-        description || "", 
-        contact || "", 
-        company || "", 
-        amount || 0, // Ensure valid decimal or 0
-        id
-      ]
+      [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0, id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -320,39 +323,31 @@ app.delete("/api/projects/:id", async (req, res) => {
   }
 });
 
-
 // ================= DELETE COMPANY =================
 app.delete("/api/companies/:id", async (req, res) => {
   const { id } = req.params;
   try {
     const result = await queryDB("DELETE FROM company WHERE id = ?", [id]);
-    
-    // result.affectedRows tells us if something was actually deleted
     if (result.affectedRows > 0) {
       res.json({ success: true, message: "Company deleted successfully" });
     } else {
       res.status(404).json({ success: false, error: "Company not found" });
     }
   } catch (err) {
-    console.error("Database error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // ================= CLIENTS =================
-
-// GET all clients
 app.get("/api/clients", async (req, res) => {
   try {
     const rows = await queryDB("SELECT * FROM clients ORDER BY id ASC");
     res.json({ success: true, clients: rows });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST new client
 app.post("/api/clients", async (req, res) => {
   const { clientName, companyName, email, salesRep } = req.body;
   try {
@@ -362,12 +357,10 @@ app.post("/api/clients", async (req, res) => {
     );
     res.json({ success: true, message: "Client added successfully" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// DELETE client
 app.delete("/api/clients/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -378,55 +371,71 @@ app.delete("/api/clients/:id", async (req, res) => {
       res.status(404).json({ success: false, error: "Client not found" });
     }
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // ================= TASKS API =================
-
-
-// Get all tasks
 app.get("/api/tasks", async (req, res) => {
   try {
     const tasks = await queryDB("SELECT * FROM tasks ORDER BY created_at DESC");
-    res.json({ success: true, tasks });
+    const tasksWithComments = await Promise.all(tasks.map(async (task) => {
+      const comments = await queryDB(
+        "SELECT * FROM task_comments WHERE task_id = ? ORDER BY created_at ASC", 
+        [task.id]
+      );
+      return { ...task, comments: comments || [] };
+    }));
+    res.json({ success: true, tasks: tasksWithComments });
   } catch (err) {
-    console.error("Fetch Tasks Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Add a new task
-app.post("/api/tasks", async (req, res) => {
-  const { title, priority, deadline, user_id } = req.body;
-  
-  // Debugging: This will show in your terminal if user_id is missing
-  console.log("Adding Task for User ID:", user_id);
-
-  if (!user_id) {
-    return res.status(400).json({ success: false, message: "User ID is required to create a task" });
+app.post("/api/tasks/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { user_name, comment_text } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO task_comments (task_id, user_name, comment_text) VALUES (?, ?, ?)",
+      [id, user_name, comment_text]
+    );
+    res.json({ success: true, message: "Comment added" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
+app.post("/api/tasks", async (req, res) => {
+  const { title, priority, deadline, user_id, notes, assigned_user, creator_name } = req.body;
+  if (!user_id) return res.status(400).json({ success: false, message: "User ID is required" });
   try {
     const result = await queryDB(
-      "INSERT INTO tasks (title, priority, deadline, user_id, status) VALUES (?, ?, ?, ?, 'Pending')",
-      [title, priority, deadline || null, user_id]
+      "INSERT INTO tasks (title, priority, deadline, user_id, status, notes, taskmate, creator_name) VALUES (?, ?, ?, ?, 'Pending', ?, ?, ?)",
+      [title, priority, deadline || null, user_id, notes || "", assigned_user || null, creator_name || "Admin"]
     );
-    
-    // MariaDB/MySQL returns insertId differently depending on the driver version
-    // If result.insertId is undefined, try result.affectedRows or similar
     const newId = result.insertId || result.id;
     const newTask = await queryDB("SELECT * FROM tasks WHERE id = ?", [newId]);
-    
     res.json({ success: true, task: newTask[0] });
   } catch (err) {
-    console.error("Add Task DB Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Update task status
+app.put("/api/tasks/:id", async (req, res) => {
+  const { id } = req.params;
+  const { title, priority, deadline, notes, assigned_user } = req.body;
+  try {
+    await queryDB(
+      "UPDATE tasks SET title = ?, priority = ?, deadline = ?, notes = ?, taskmate = ? WHERE id = ?",
+      [title, priority, deadline || null, notes || "", assigned_user || null, id]
+    );
+    res.json({ success: true, message: "Task updated successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.put("/api/tasks/:id/status", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -434,19 +443,47 @@ app.put("/api/tasks/:id/status", async (req, res) => {
     await queryDB("UPDATE tasks SET status = ? WHERE id = ?", [status, id]);
     res.json({ success: true, message: "Task status updated" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Delete a task
 app.delete("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
   try {
     await queryDB("DELETE FROM tasks WHERE id = ?", [id]);
     res.json({ success: true, message: "Task deleted" });
   } catch (err) {
-    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= PROJECT COMMENTS API =================
+app.get("/api/projects-detailed", async (req, res) => {
+  try {
+    const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
+    const projectsWithComments = await Promise.all(projects.map(async (proj) => {
+      const comments = await queryDB(
+        "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
+        [proj.id]
+      );
+      return { ...proj, comments: comments || [] };
+    }));
+    res.json({ success: true, projects: projectsWithComments });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/projects/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { user_name, comment_text } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
+      [id, user_name, comment_text]
+    );
+    res.json({ success: true, message: "Comment added to project" });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -483,7 +520,6 @@ app.post("/api/proposals/:id/comments", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
 
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
