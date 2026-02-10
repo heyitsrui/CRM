@@ -335,6 +335,32 @@ app.delete("/api/projects/:id", async (req, res) => {
   }
 });
 
+// ================= GET ALL COMPANIES =================
+app.get("/api/companies", async (req, res) => {
+  try {
+    // Note: Use the column names from your CREATE TABLE script
+    const rows = await queryDB("SELECT id, company_name as name, company_owner as owner, types, email, description FROM company");
+    res.json({ success: true, companies: rows });
+  } catch (err) {
+    console.error("Fetch companies error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= CREATE COMPANY =================
+app.post("/api/companies", async (req, res) => {
+  const { name, owner, types, email, description } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO company (company_name, company_owner, types, email, description) VALUES (?, ?, ?, ?, ?)",
+      [name, owner, types, email, description]
+    );
+    res.json({ success: true, message: "Company created successfully" });
+  } catch (err) {
+    console.error("Create company error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ================= DELETE COMPANY =================
 app.delete("/api/companies/:id", async (req, res) => {
@@ -469,5 +495,4 @@ app.delete("/api/tasks/:id", async (req, res) => {
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
 
