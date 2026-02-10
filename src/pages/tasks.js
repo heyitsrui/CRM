@@ -1,132 +1,200 @@
-import React, { useState, useEffect } from "react";
-import { Plus, Trash2, CheckCircle, Clock } from "lucide-react";
-import axios from "axios";
-import "../styles/tasks.css";
+import React, { useState, useEffect } from 'react';
+import {Edit, Trash2, CheckCircle, LayoutGrid, CheckSquare, Trophy } from 'lucide-react';
+import axios from 'axios';
+import '../styles/tasks.css';
 
-// The fix is right here: we must accept { currentUser } as a prop
-const Tasks = ({ currentUser }) => {
+const Tasks = ({ loggedInUser }) => {
   const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState({
-    title: "",
-    priority: "Medium",
-    deadline: ""
+  const [filter, setFilter] = useState('All');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  
+  // FIX 1: Default priority must be capitalized to match your DB ENUM
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    description: '', 
+    priority: 'Low' 
   });
-
-  // Fetch Tasks from Backend
-  const fetchTasks = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/tasks");
-      if (res.data.success) setTasks(res.data.tasks);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-    }
-  };
 
   useEffect(() => {
     fetchTasks();
   }, []);
 
-  const handleAddTask = async (e) => {
-    e.preventDefault();
-    if (!newTask.title) return;
-
-    // Safety check to ensure currentUser exists before sending to DB
-    if (!currentUser || !currentUser.id) {
-      alert("User session not found. Please log in again.");
-      return;
-    }
-
+  const fetchTasks = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/tasks", {
-        ...newTask,
-        user_id: currentUser.id // This is line 40 that was erroring
-      });
-
-      if (res.data.success) {
-        setTasks([res.data.task, ...tasks]);
-        setNewTask({ title: "", priority: "Medium", deadline: "" });
-      }
+      const res = await axios.get('http://localhost:5000/api/tasks');
+      if (res.data.success) setTasks(res.data.tasks);
     } catch (err) {
-      console.error("Add task error:", err);
-      alert("Failed to add task: " + (err.response?.data?.message || "Check server console"));
+      console.error("Error fetching tasks", err);
     }
   };
 
-  const handleDeleteTask = async (id) => {
+  const handleToggleComplete = async (task) => {
+    // FIX 2: Status must match your DB ENUM capitalization exactly
+    const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
     try {
+      await axios.put(`http://localhost:5000/api/tasks/${task.id}/status`, { status: newStatus });
+      fetchTasks(); 
+    } catch (err) {
+      console.error("Update failed", err);
+    }
+  };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  // 1. Prepare a clean payload that matches your MariaDB structure
+  const payload = {
+    title: formData.title,
+    description: formData.description || "",
+    priority: formData.priority,
+    user_id: loggedInUser?.id || 1, // Ensure ID is sent
+    status: editingTask ? editingTask.status : 'Pending'
+  };
+
+  try {
+    if (editingTask) {
+      // 2. Perform the Update (PUT)
+      await axios.put(`http://localhost:5000/api/tasks/${editingTask.id}`, payload);
+    } else {
+      // 3. Perform the Create (POST)
+      await axios.post('http://localhost:5000/api/tasks', payload);
+    }
+    closeModal();
+    fetchTasks();
+  } catch (err) {
+    console.error("Save Error:", err.response?.data || err);
+    // This is the alert you are seeing; logging err.response shows the real SQL error
+    alert("Save Failed: Check your login status");
+  }
+};
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
+    setFormData({ title: '', description: '', priority: 'Low' });
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Delete this task?")) {
       await axios.delete(`http://localhost:5000/api/tasks/${id}`);
-      setTasks(tasks.filter((t) => t.id !== id));
-    } catch (err) {
-      alert("Delete failed");
+      fetchTasks();
     }
   };
 
-  const toggleStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === "Completed" ? "Pending" : "Completed";
-    try {
-      await axios.put(`http://localhost:5000/api/tasks/${id}/status`, { status: newStatus });
-      setTasks(tasks.map(t => t.id === id ? { ...t, status: newStatus } : t));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const total = tasks.length;
+  const completed = tasks.filter(t => t.status === 'Completed').length;
+  const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  const filteredTasks = tasks.filter(t => filter === 'All' || t.priority === filter);
 
   return (
-    <div className="dashboard-content">
-      <div className="tasks-container">
-        <h2 className="section-title">Team Tasks</h2>
+    <div className="tasks-page-container">
+      {/* 📊 TOP PROGRESS SECTION */}
+      <div className="stats-cards-row">
+        <div className="stat-card-mini">
+          <div className="stat-icon-bg blue"><LayoutGrid size={20} /></div>
+          <div className="stat-card-info">
+            <span className="stat-number">{total}</span>
+            <span className="stat-label">Total Tasks</span>
+          </div>
+        </div>
 
-        <form className="add-task-form" onSubmit={handleAddTask}>
-          <input 
-            type="text" 
-            placeholder="What needs to be done?" 
-            value={newTask.title}
-            onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-          />
-          <select 
-            value={newTask.priority} 
-            onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
-          >
-            <option value="High">High Priority</option>
-            <option value="Medium">Medium Priority</option>
-            <option value="Low">Low Priority</option>
-          </select>
-          <input 
-            type="date" 
-            value={newTask.deadline}
-            onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
-          />
-          <button type="submit" className="add-task-btn"><Plus size={18} /> Add</button>
-        </form>
+        <div className="stat-card-mini">
+          <div className="stat-icon-bg green"><CheckSquare size={20} /></div>
+          <div className="stat-card-info">
+            <span className="stat-number">{progressPercent}%</span>
+            <span className="stat-label">Progress</span>
+            <div className="mini-progress-bar">
+               <div className="fill" style={{ width: `${progressPercent}%` }}></div>
+            </div>
+          </div>
+        </div>
 
-        <div className="task-list">
-          {tasks.map((task) => (
-            <div key={task.id} className={`task-item priority-${task.priority.toLowerCase()}`}>
-              <div className="task-main">
-                <button 
-                  className={`status-toggle ${task.status === "Completed" ? "is-done" : ""}`}
-                  onClick={() => toggleStatus(task.id, task.status)}
-                >
-                  <CheckCircle size={20} />
-                </button>
-                <div className="task-info">
-                  <h4 className={task.status === "Completed" ? "strikethrough" : ""}>{task.title}</h4>
-                  <span className="task-meta">
-                    <Clock size={12} /> {task.deadline || "No deadline"}
-                  </span>
-                </div>
+        <div className="stat-card-mini">
+          <div className="stat-icon-bg purple"><Trophy size={20} /></div>
+          <div className="stat-card-info">
+            <span className="stat-number">{completed}</span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="tasks-main-content">
+        <div className="tasks-header">
+          <h2>All Tasks</h2>
+          <div className="header-actions">
+            <div className="filter-pill">
+              {['All', 'Low', 'Medium', 'High'].map(f => (
+                <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{f}</button>
+              ))}
+            </div>
+            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>Add a new Task</button>
+          </div>
+        </div>
+
+        <div className="tasks-grid">
+          {filteredTasks.map(task => (
+            <div className={`task-card ${task.status === 'Completed' ? 'status-completed' : ''}`} key={task.id}>
+              <div className="card-content">
+                <h3>{task.title}</h3>
+                <p>{task.description}</p>
               </div>
-              
-              <div className="task-actions">
-                <span className={`priority-tag ${task.priority.toLowerCase()}`}>{task.priority}</span>
-                <button className="delete-task-btn" onClick={() => handleDeleteTask(task.id)}>
-                  <Trash2 size={18} />
-                </button>
+              <div className="task-footer">
+                <span className="task-meta">Yesterday</span>
+                <span className={`priority-label ${task.priority?.toLowerCase()}`}>{task.priority}</span>
+                <div className="action-icons">
+                  <CheckCircle 
+                    size={18} 
+                    className={`icon-check ${task.status === 'Completed' ? 'checked' : ''}`} 
+                    onClick={() => handleToggleComplete(task)}
+                  />
+                  <Edit size={18} className="icon-edit" onClick={() => { setEditingTask(task); setFormData(task); setIsModalOpen(true); }} />
+                  <Trash2 size={18} className="icon-delete" onClick={() => handleDelete(task.id)} />
+                </div>
               </div>
             </div>
           ))}
+          <div className="task-card add-dummy" onClick={() => setIsModalOpen(true)}>
+             <span>+ Add New Task</span>
+          </div>
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-body">
+            <h3>{editingTask ? 'Edit Task' : 'New Task'}</h3>
+            <form onSubmit={handleSubmit}>
+              <input 
+                type="text" 
+                placeholder="Title" 
+                value={formData.title} 
+                onChange={e => setFormData({...formData, title: e.target.value})} 
+                required 
+              />
+              <textarea 
+                placeholder="Description" 
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})} 
+              />
+              {/* FIX 4: Options must match DB ENUM exactly */}
+              <select 
+                value={formData.priority} 
+                onChange={e => setFormData({...formData, priority: e.target.value})}
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+              <div className="form-actions">
+                <button type="button" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn-save">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
