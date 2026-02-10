@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import {Edit, Trash2, CheckCircle, LayoutGrid, CheckSquare, Trophy } from 'lucide-react';
+import { Edit, Trash2, CheckCircle, LayoutGrid, CheckSquare, Trophy } from 'lucide-react';
 import axios from 'axios';
 import '../styles/tasks.css';
+
+// This detects the server IP automatically so it works on any PC
+const API_BASE_URL = `http://${window.location.hostname}:5000`;
 
 const Tasks = ({ loggedInUser }) => {
   const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  
-  // FIX 1: Default priority must be capitalized to match your DB ENUM
-  const [formData, setFormData] = useState({ 
-    title: '', 
-    description: '', 
-    priority: 'Low' 
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'Low'
   });
 
   useEffect(() => {
@@ -22,52 +24,52 @@ const Tasks = ({ loggedInUser }) => {
 
   const fetchTasks = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/tasks');
+      const res = await axios.get(`${API_BASE_URL}/api/tasks`);
       if (res.data.success) setTasks(res.data.tasks);
     } catch (err) {
-      console.error("Error fetching tasks", err);
+      console.error("Error fetching tasks:", err);
     }
   };
 
   const handleToggleComplete = async (task) => {
-    // FIX 2: Status must match your DB ENUM capitalization exactly
     const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
     try {
-      await axios.put(`http://localhost:5000/api/tasks/${task.id}/status`, { status: newStatus });
-      fetchTasks(); 
+      await axios.put(`${API_BASE_URL}/api/tasks/${task.id}/status`, { status: newStatus });
+      fetchTasks();
     } catch (err) {
-      console.error("Update failed", err);
+      console.error("Update failed:", err);
     }
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // 1. Prepare a clean payload that matches your MariaDB structure
-  const payload = {
-    title: formData.title,
-    description: formData.description || "",
-    priority: formData.priority,
-    user_id: loggedInUser?.id || 1, // Ensure ID is sent
-    status: editingTask ? editingTask.status : 'Pending'
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    if (editingTask) {
-      // 2. Perform the Update (PUT)
-      await axios.put(`http://localhost:5000/api/tasks/${editingTask.id}`, payload);
-    } else {
-      // 3. Perform the Create (POST)
-      await axios.post('http://localhost:5000/api/tasks', payload);
+    // Prevent sending 'null' user_id to the database
+    if (!loggedInUser || !loggedInUser.id) {
+      alert("Save Failed: You must be logged in on this PC to add tasks.");
+      return;
     }
-    closeModal();
-    fetchTasks();
-  } catch (err) {
-    console.error("Save Error:", err.response?.data || err);
-    // This is the alert you are seeing; logging err.response shows the real SQL error
-    alert("Save Failed: Check your login status");
-  }
-};
+
+    try {
+      const payload = {
+        title: formData.title,
+        description: formData.description || null,
+        priority: formData.priority,
+        user_id: loggedInUser.id
+      };
+
+      if (editingTask) {
+        await axios.put(`${API_BASE_URL}/api/tasks/${editingTask.id}`, formData);
+      } else {
+        await axios.post(`${API_BASE_URL}/api/tasks`, payload);
+      }
+      closeModal();
+      fetchTasks();
+    } catch (err) {
+      console.error("Save Error:", err.response?.data || err);
+      alert("Error saving task. Check your network or login status.");
+    }
+  };
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -77,15 +79,18 @@ const handleSubmit = async (e) => {
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete this task?")) {
-      await axios.delete(`http://localhost:5000/api/tasks/${id}`);
-      fetchTasks();
+      try {
+        await axios.delete(`${API_BASE_URL}/api/tasks/${id}`);
+        fetchTasks();
+      } catch (err) {
+        console.error("Delete failed:", err);
+      }
     }
   };
 
   const total = tasks.length;
   const completed = tasks.filter(t => t.status === 'Completed').length;
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
-
   const filteredTasks = tasks.filter(t => filter === 'All' || t.priority === filter);
 
   return (
@@ -106,7 +111,7 @@ const handleSubmit = async (e) => {
             <span className="stat-number">{progressPercent}%</span>
             <span className="stat-label">Progress</span>
             <div className="mini-progress-bar">
-               <div className="fill" style={{ width: `${progressPercent}%` }}></div>
+              <div className="fill" style={{ width: `${progressPercent}%` }}></div>
             </div>
           </div>
         </div>
@@ -126,10 +131,18 @@ const handleSubmit = async (e) => {
           <div className="header-actions">
             <div className="filter-pill">
               {['All', 'Low', 'Medium', 'High'].map(f => (
-                <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{f}</button>
+                <button 
+                  key={f} 
+                  className={filter === f ? 'active' : ''} 
+                  onClick={() => setFilter(f)}
+                >
+                  {f}
+                </button>
               ))}
             </div>
-            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>Add a new Task</button>
+            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+              Add a new Task
+            </button>
           </div>
         </div>
 
@@ -149,8 +162,16 @@ const handleSubmit = async (e) => {
                     className={`icon-check ${task.status === 'Completed' ? 'checked' : ''}`} 
                     onClick={() => handleToggleComplete(task)}
                   />
-                  <Edit size={18} className="icon-edit" onClick={() => { setEditingTask(task); setFormData(task); setIsModalOpen(true); }} />
-                  <Trash2 size={18} className="icon-delete" onClick={() => handleDelete(task.id)} />
+                  <Edit 
+                    size={18} 
+                    className="icon-edit" 
+                    onClick={() => { setEditingTask(task); setFormData(task); setIsModalOpen(true); }} 
+                  />
+                  <Trash2 
+                    size={18} 
+                    className="icon-delete" 
+                    onClick={() => handleDelete(task.id)} 
+                  />
                 </div>
               </div>
             </div>
@@ -178,7 +199,6 @@ const handleSubmit = async (e) => {
                 value={formData.description} 
                 onChange={e => setFormData({...formData, description: e.target.value})} 
               />
-              {/* FIX 4: Options must match DB ENUM exactly */}
               <select 
                 value={formData.priority} 
                 onChange={e => setFormData({...formData, priority: e.target.value})}
