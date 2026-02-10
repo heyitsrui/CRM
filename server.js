@@ -492,7 +492,40 @@ app.delete("/api/tasks/:id", async (req, res) => {
   }
 });
 
+// ================= PROPOSALS API (Fix for Projects & Jobs Page) =================
+app.get("/api/proposals-detailed", async (req, res) => {
+  try {
+    const proposals = await queryDB("SELECT * FROM proposals ORDER BY created_at DESC");
+    const proposalsWithComments = await Promise.all(proposals.map(async (prop) => {
+      // Reusing the project_comments table for simplicity as previously suggested
+      const comments = await queryDB(
+        "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
+        [prop.id]
+      );
+      return { ...prop, comments: comments || [] };
+    }));
+    res.json({ success: true, projects: proposalsWithComments });
+  } catch (err) {
+    console.error("Fetch Proposals Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/proposals/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { user_name, comment_text } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
+      [id, user_name, comment_text]
+    );
+    res.json({ success: true, message: "Comment added to proposal" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
