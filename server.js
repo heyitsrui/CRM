@@ -440,18 +440,34 @@ app.post("/api/tasks", async (req, res) => {
 });
 
 // Update an existing task
+// Update task status in server.js
+app.put("/api/tasks/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  try {
+    // Ensure the query uses the parameters correctly
+    await queryDB("UPDATE tasks SET status = ? WHERE id = ?", [status, id]);
+    res.json({ success: true, message: "Task status updated" });
+  } catch (err) {
+    console.error("DB Update Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 app.put("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, description, priority, user_id, status } = req.body;
+  const { title, description, priority, user_id } = req.body;
 
   try {
     await queryDB(
-      "UPDATE tasks SET title = ?, description = ?, priority = ?, user_id = ?, status = ? WHERE id = ?",
-      [title, description || "", priority, user_id, status || 'Pending', id]
+      "UPDATE tasks SET title = ?, description = ?, priority = ?, user_id = ? WHERE id = ?",
+      [title, description, priority, user_id, id]
     );
-    res.json({ success: true, message: "Task updated" });
+    res.json({ success: true, message: "Task updated successfully" });
   } catch (err) {
-    console.error("Update Task DB Error:", err);
+    console.error("Update Task Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
