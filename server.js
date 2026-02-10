@@ -6,14 +6,16 @@ const cors = require("cors");
 const mariadb = require("mariadb");
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cors());
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // ================= MariaDB Connection =================
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "12202003",
+  password: process.env.DB_PASS || "Charles@123",
   database: process.env.DB_NAME || "crm",
   connectionLimit: 5,
 });
@@ -195,7 +197,6 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ================= USERS =================
-// Get all users
 app.get("/api/users", async (req, res) => {
   try {
     const users = await queryDB(
@@ -207,7 +208,6 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// ✅ FIXED: Get single user by ID (Simplified to one clean route)
 app.get("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -223,17 +223,20 @@ app.get("/api/users/:id", async (req, res) => {
   }
 });
 
-// ✅ FIXED: Save Profile (Mapped correctly to your database columns)
 app.put("/api/users/:id/profile", async (req, res) => {
   const { id } = req.params;
   const { name, phone, about, avatar } = req.body; 
-
+  if (avatar && avatar.length > 7_000_000) {
+    return res.status(400).json({
+      success: false,
+      message: "Profile image too large. Please upload a smaller image."
+    });
+  }
   try {
     await queryDB(
       "UPDATE users SET name=?, phone=?, about=?, avatar=? WHERE id=?",
       [name, phone, about, avatar, id]
     );
-
     const updatedUser = await queryDB(
       "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
       [id]
@@ -244,7 +247,6 @@ app.put("/api/users/:id/profile", async (req, res) => {
   }
 });
 
-// Delete user
 app.delete("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -273,7 +275,6 @@ app.get("/api/projects", async (req, res) => {
 app.post("/api/projects", async (req, res) => {
   const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
   if (!deal_name) return res.json({ success: false, message: "Deal Name is required" });
-
   try {
     const result = await queryDB(
       `INSERT INTO projects
@@ -281,9 +282,7 @@ app.post("/api/projects", async (req, res) => {
        VALUES (?, ?, ?, 'Lead', 0, 0, ?, ?, ?, ?, NOW())`,
       [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0]
     );
-
     const project = await queryDB("SELECT * FROM projects WHERE id = ?", [result.insertId]);
-
     res.json({ success: true, project: project[0] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -297,28 +296,17 @@ app.put("/api/projects/:id/status", async (req, res) => {
     await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(0).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Update Project Route (Fixed handling of empty/optional fields)
 app.put("/api/projects/:id", async (req, res) => {
   const { id } = req.params;
   const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
-
   try {
     await queryDB(
       `UPDATE projects SET deal_name=?, deal_owner=?, address=?, description=?, contact=?, company=?, amount=? WHERE id=?`,
-      [
-        deal_name, 
-        deal_owner || "", 
-        address || "", 
-        description || "", 
-        contact || "", 
-        company || "", 
-        amount || 0, // Ensure valid decimal or 0
-        id
-      ]
+      [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0, id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -335,65 +323,31 @@ app.delete("/api/projects/:id", async (req, res) => {
   }
 });
 
-// ================= GET ALL COMPANIES =================
-app.get("/api/companies", async (req, res) => {
-  try {
-    // Note: Use the column names from your CREATE TABLE script
-    const rows = await queryDB("SELECT id, company_name as name, company_owner as owner, types, email, description FROM company");
-    res.json({ success: true, companies: rows });
-  } catch (err) {
-    console.error("Fetch companies error:", err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= CREATE COMPANY =================
-app.post("/api/companies", async (req, res) => {
-  const { name, owner, types, email, description } = req.body;
-  try {
-    await queryDB(
-      "INSERT INTO company (company_name, company_owner, types, email, description) VALUES (?, ?, ?, ?, ?)",
-      [name, owner, types, email, description]
-    );
-    res.json({ success: true, message: "Company created successfully" });
-  } catch (err) {
-    console.error("Create company error:", err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // ================= DELETE COMPANY =================
 app.delete("/api/companies/:id", async (req, res) => {
   const { id } = req.params;
   try {
     const result = await queryDB("DELETE FROM company WHERE id = ?", [id]);
-    
-    // result.affectedRows tells us if something was actually deleted
     if (result.affectedRows > 0) {
       res.json({ success: true, message: "Company deleted successfully" });
     } else {
       res.status(404).json({ success: false, error: "Company not found" });
     }
   } catch (err) {
-    console.error("Database error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // ================= CLIENTS =================
-
-// GET all clients
 app.get("/api/clients", async (req, res) => {
   try {
     const rows = await queryDB("SELECT * FROM clients ORDER BY id ASC");
     res.json({ success: true, clients: rows });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST new client
 app.post("/api/clients", async (req, res) => {
   const { clientName, companyName, email, salesRep } = req.body;
   try {
@@ -403,12 +357,10 @@ app.post("/api/clients", async (req, res) => {
     );
     res.json({ success: true, message: "Client added successfully" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// DELETE client
 app.delete("/api/clients/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -419,13 +371,11 @@ app.delete("/api/clients/:id", async (req, res) => {
       res.status(404).json({ success: false, error: "Client not found" });
     }
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // ================= TASKS API =================
-
 
 // Get all tasks
 app.get("/api/tasks", async (req, res) => {
@@ -437,49 +387,74 @@ app.get("/api/tasks", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
 // Add a new task
 app.post("/api/tasks", async (req, res) => {
-  const { title, priority, deadline, user_id } = req.body;
-  
-  // Debugging: This will show in your terminal if user_id is missing
-  console.log("Adding Task for User ID:", user_id);
+  // 1. Destructure all fields including 'description' sent from React
+  const { title, description, priority, deadline, user_id } = req.body;
 
+  // Debugging: Log the incoming payload
+  console.log("Adding Task for User ID:", user_id, "Priority:", priority);
+
+  // 2. Strict Validation
   if (!user_id) {
-    return res.status(400).json({ success: false, message: "User ID is required to create a task" });
+    return res.status(400).json({ success: false, message: "User ID is required" });
+  }
+  if (!title) {
+    return res.status(400).json({ success: false, message: "Task Title is required" });
   }
 
   try {
+    // 3. Fix Priority Capitalization to match your DB ENUM (Low, Medium, High)
+    const formattedPriority = priority 
+      ? priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase() 
+      : 'Low';
+
+    // 4. Run Insert Query (Added 'description' here)
     const result = await queryDB(
-      "INSERT INTO tasks (title, priority, deadline, user_id, status) VALUES (?, ?, ?, ?, 'Pending')",
-      [title, priority, deadline || null, user_id]
+      "INSERT INTO tasks (title, description, priority, deadline, user_id, status) VALUES (?, ?, ?, ?, ?, 'Pending')",
+      [
+        title, 
+        description || "", 
+        formattedPriority, 
+        deadline || null, 
+        user_id
+      ]
     );
-    
-    // MariaDB/MySQL returns insertId differently depending on the driver version
-    // If result.insertId is undefined, try result.affectedRows or similar
-    const newId = result.insertId || result.id;
+
+    // 5. Correctly capture the New ID
+    // MariaDB driver usually puts this in 'insertId' (BigInt)
+    const newId = result.insertId !== undefined ? Number(result.insertId) : result.id;
+
+    if (!newId) {
+        throw new Error("Failed to retrieve Insert ID from Database.");
+    }
+
     const newTask = await queryDB("SELECT * FROM tasks WHERE id = ?", [newId]);
-    
     res.json({ success: true, task: newTask[0] });
+
   } catch (err) {
     console.error("Add Task DB Error:", err);
+    // If the error mentions 'description', make sure you added the column in HeidiSQL
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Update task status
-app.put("/api/tasks/:id/status", async (req, res) => {
+// Update an existing task
+app.put("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { title, description, priority, user_id, status } = req.body;
+
   try {
-    await queryDB("UPDATE tasks SET status = ? WHERE id = ?", [status, id]);
-    res.json({ success: true, message: "Task status updated" });
+    await queryDB(
+      "UPDATE tasks SET title = ?, description = ?, priority = ?, user_id = ?, status = ? WHERE id = ?",
+      [title, description || "", priority, user_id, status || 'Pending', id]
+    );
+    res.json({ success: true, message: "Task updated" });
   } catch (err) {
-    console.error(err);
+    console.error("Update Task DB Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
 // Delete a task
 app.delete("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
@@ -492,26 +467,24 @@ app.delete("/api/tasks/:id", async (req, res) => {
   }
 });
 
-// ================= PROPOSALS API (Fix for Projects & Jobs Page) =================
-app.get("/api/proposals-detailed", async (req, res) => {
+// ================= PROJECT COMMENTS API =================
+app.get("/api/projects-detailed", async (req, res) => {
   try {
-    const proposals = await queryDB("SELECT * FROM proposals ORDER BY created_at DESC");
-    const proposalsWithComments = await Promise.all(proposals.map(async (prop) => {
-      // Reusing the project_comments table for simplicity as previously suggested
+    const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
+    const projectsWithComments = await Promise.all(projects.map(async (proj) => {
       const comments = await queryDB(
         "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
-        [prop.id]
+        [proj.id]
       );
-      return { ...prop, comments: comments || [] };
+      return { ...proj, comments: comments || [] };
     }));
-    res.json({ success: true, projects: proposalsWithComments });
+    res.json({ success: true, projects: projectsWithComments });
   } catch (err) {
-    console.error("Fetch Proposals Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post("/api/proposals/:id/comments", async (req, res) => {
+app.post("/api/projects/:id/comments", async (req, res) => {
   const { id } = req.params;
   const { user_name, comment_text } = req.body;
   try {
@@ -519,13 +492,53 @@ app.post("/api/proposals/:id/comments", async (req, res) => {
       "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
       [id, user_name, comment_text]
     );
-    res.json({ success: true, message: "Comment added to proposal" });
+    res.json({ success: true, message: "Comment added to project" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ================= PROJECTS API (Updated to match 'projects' table) =================
+
+// 1. GET all projects with their comments
+app.get("/api/projects-detailed", async (req, res) => {
+  try {
+    // Changed table name from 'proposals' to 'projects'
+    const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
+    
+    const projectsWithComments = await Promise.all(projects.map(async (proj) => {
+      // Fetches comments linked to the project ID
+      const comments = await queryDB(
+        "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
+        [proj.id]
+      );
+      return { ...proj, comments: comments || [] };
+    }));
+
+    // success: true and projects: [...] matches your frontend's requirements
+    res.json({ success: true, projects: projectsWithComments });
+  } catch (err) {
+    console.error("Fetch Projects Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. POST a new comment to a specific project
+app.post("/api/projects/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { user_name, comment_text } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
+      [id, user_name, comment_text]
+    );
+    res.json({ success: true, message: "Comment added to project" });
+  } catch (err) {
+    console.error("Post Comment Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
