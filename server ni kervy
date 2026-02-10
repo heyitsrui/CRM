@@ -1,526 +1,197 @@
-require("dotenv").config();
-const express = require("express");
-const nodemailer = require("nodemailer");
-const otpGenerator = require("otp-generator");
-const cors = require("cors");
-const mariadb = require("mariadb");
 
-const app = express();
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(cors());
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+import React, { useState, useEffect } from 'react';
+import {Edit, Trash2, CheckCircle, LayoutGrid, CheckSquare, Trophy } from 'lucide-react';
+import axios from 'axios';
+import '../styles/tasks.css';
 
-// ================= MariaDB Connection =================
-const pool = mariadb.createPool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "Charles@123",
-  database: process.env.DB_NAME || "crm",
-  connectionLimit: 5,
-});
+const Tasks = ({ loggedInUser }) => {
+  const [tasks, setTasks] = useState([]);
+  const [filter, setFilter] = useState('All');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  
+  // FIX 1: Default priority must be capitalized to match your DB ENUM
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    description: '', 
+    priority: 'Low' 
+  });
 
-// Helper function to query database
-async function queryDB(sql, params) {
-  let conn;
-  try {
-    conn = await pool.getConnection();
-    const rows = await conn.query(sql, params);
-    return rows;
-  } catch (err) {
-    throw err;
-  } finally {
-    if (conn) conn.release();
-  }
-}
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
-// ================= OTP Storage =================
-const otpStore = {}; 
+  const fetchTasks = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/tasks');
+      if (res.data.success) setTasks(res.data.tasks);
+    } catch (err) {
+      console.error("Error fetching tasks", err);
+    }
+  };
 
-// ================= Email Transporter =================
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+  const handleToggleComplete = async (task) => {
+    // FIX 2: Status must match your DB ENUM capitalization exactly
+    const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
+    try {
+      await axios.put(`http://localhost:5000/api/tasks/${task.id}/status`, { status: newStatus });
+      fetchTasks(); 
+    } catch (err) {
+      console.error("Update failed", err);
+    }
+  };
 
-// ================= SEND OTP =================
-app.post("/send-otp", async (req, res) => {
-  try {
-    const { email } = req.body;
-    const users = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-    if (!users || users.length === 0)
-      return res.json({ success: false, message: "Email is not registered" });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTask) {
+        await axios.put(`http://localhost:5000/api/tasks/${editingTask.id}`, formData);
+      } else {
+        // FIX 3: Ensure user_id and priority are formatted correctly for MariaDB
+        const payload = {
+          title: formData.title,
+          description: formData.description || null,
+          priority: formData.priority, // Now correctly capitalized
+          user_id: loggedInUser?.id || null
+        };
+        await axios.post('http://localhost:5000/api/tasks', payload);
+      }
+      closeModal();
+      fetchTasks();
+    } catch (err) {
+      console.error("Save Error:", err.response?.data || err);
+      alert("Error saving task. Check if you are logged in correctly.");
+    }
+  };
 
-    const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
+    setFormData({ title: '', description: '', priority: 'Low' });
+  };
 
-    await queryDB(
-      `INSERT INTO otp_table (email, otp, expires_at)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE otp = VALUES(otp), expires_at = VALUES(expires_at)`,
-      [email, otp, new Date(Date.now() + 5 * 60 * 1000)]
-    );
+  const handleDelete = async (id) => {
+    if (window.confirm("Delete this task?")) {
+      await axios.delete(`http://localhost:5000/api/tasks/${id}`);
+      fetchTasks();
+    }
+  };
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Your OTP Code",
-      html: `<h2>Your OTP is: ${otp}</h2><p>Valid for 5 minutes</p>`,
-    });
+  const total = tasks.length;
+  const completed = tasks.filter(t => t.status === 'Completed').length;
+  const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    res.json({ success: true, message: "OTP sent" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+  const filteredTasks = tasks.filter(t => filter === 'All' || t.priority === filter);
 
-// ================= VERIFY OTP =================
-app.post("/verify-otp", async (req, res) => {
-  const { email, otp } = req.body;
-  try {
-    const rows = await queryDB("SELECT * FROM otp_table WHERE email = ?", [email]);
-    if (!rows || rows.length === 0) return res.json({ success: false, message: "Invalid or expired OTP" });
+  return (
+    <div className="tasks-page-container">
+      {/* 📊 TOP PROGRESS SECTION */}
+      <div className="stats-cards-row">
+        <div className="stat-card-mini">
+          <div className="stat-icon-bg blue"><LayoutGrid size={20} /></div>
+          <div className="stat-card-info">
+            <span className="stat-number">{total}</span>
+            <span className="stat-label">Total Tasks</span>
+          </div>
+        </div>
 
-    const record = rows[0];
-    if (new Date() > record.expires_at) {
-      await queryDB("DELETE FROM otp_table WHERE email = ?", [email]);
-      return res.json({ success: false, message: "OTP expired" });
-    }
+        <div className="stat-card-mini">
+          <div className="stat-icon-bg green"><CheckSquare size={20} /></div>
+          <div className="stat-card-info">
+            <span className="stat-number">{progressPercent}%</span>
+            <span className="stat-label">Progress</span>
+            <div className="mini-progress-bar">
+               <div className="fill" style={{ width: `${progressPercent}%` }}></div>
+            </div>
+          </div>
+        </div>
 
-    if (record.otp === otp) {
-      await queryDB("DELETE FROM otp_table WHERE email = ?", [email]);
-      return res.json({ success: true, message: "OTP verified" });
-    }
+        <div className="stat-card-mini">
+          <div className="stat-icon-bg purple"><Trophy size={20} /></div>
+          <div className="stat-card-info">
+            <span className="stat-number">{completed}</span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+      </div>
 
-    res.json({ success: false, message: "Invalid OTP" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+      <div className="tasks-main-content">
+        <div className="tasks-header">
+          <h2>All Tasks</h2>
+          <div className="header-actions">
+            <div className="filter-pill">
+              {['All', 'Low', 'Medium', 'High'].map(f => (
+                <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{f}</button>
+              ))}
+            </div>
+            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>Add a new Task</button>
+          </div>
+        </div>
 
-// ================= REGISTER USER =================
-app.post("/register", async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
-  try {
-    const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-    if (existing.length > 0)
-      return res.status(400).json({ success: false, message: "Email already registered" });
+        <div className="tasks-grid">
+          {filteredTasks.map(task => (
+            <div className={`task-card ${task.status === 'Completed' ? 'status-completed' : ''}`} key={task.id}>
+              <div className="card-content">
+                <h3>{task.title}</h3>
+                <p>{task.description}</p>
+              </div>
+              <div className="task-footer">
+                <span className="task-meta">Yesterday</span>
+                <span className={`priority-label ${task.priority?.toLowerCase()}`}>{task.priority}</span>
+                <div className="action-icons">
+                  <CheckCircle 
+                    size={18} 
+                    className={`icon-check ${task.status === 'Completed' ? 'checked' : ''}`} 
+                    onClick={() => handleToggleComplete(task)}
+                  />
+                  <Edit size={18} className="icon-edit" onClick={() => { setEditingTask(task); setFormData(task); setIsModalOpen(true); }} />
+                  <Trash2 size={18} className="icon-delete" onClick={() => handleDelete(task.id)} />
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="task-card add-dummy" onClick={() => setIsModalOpen(true)}>
+             <span>+ Add New Task</span>
+          </div>
+        </div>
+      </div>
 
-    await queryDB(
-      "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
-      [name, email, phone, password, role]
-    );
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-body">
+            <h3>{editingTask ? 'Edit Task' : 'New Task'}</h3>
+            <form onSubmit={handleSubmit}>
+              <input 
+                type="text" 
+                placeholder="Title" 
+                value={formData.title} 
+                onChange={e => setFormData({...formData, title: e.target.value})} 
+                required 
+              />
+              <textarea 
+                placeholder="Description" 
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})} 
+              />
+              {/* FIX 4: Options must match DB ENUM exactly */}
+              <select 
+                value={formData.priority} 
+                onChange={e => setFormData({...formData, priority: e.target.value})}
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+              <div className="form-actions">
+                <button type="button" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn-save">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-    res.json({ success: true, message: "User registered successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= LOGIN USER =================
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const users = await queryDB("SELECT * FROM users WHERE email = ? AND password = ?", [email, password]);
-    if (users.length === 0)
-      return res.status(400).json({ success: false, message: "Invalid email or password" });
-
-    const user = users[0];
-    res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= RESET PASSWORD =================
-app.post("/reset-password", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const users = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-    if (!users || users.length === 0)
-      return res.json({ success: false, message: "Email not registered" });
-
-    await queryDB("UPDATE users SET password = ? WHERE email = ?", [password, email]);
-    res.json({ success: true, message: "Password updated successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ================= API ROUTES =================
-app.get("/api/admin-profile", async (req, res) => {
-  try {
-    const users = await queryDB("SELECT name, email FROM users WHERE role = 'admin' LIMIT 1");
-    if (users.length === 0) return res.json({ success: true, user: { name: "Admin", email: "admin@test.com" } });
-    res.json({ success: true, user: users[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.get("/api/dashboard-stats", async (req, res) => {
-  try {
-    const stats = await queryDB(`
-      SELECT 
-        COUNT(CASE WHEN status = 'Lead' THEN 1 END) as leads,
-        COUNT(CASE WHEN status = 'Bidding' THEN 1 END) as bidding,
-        COUNT(CASE WHEN status = 'Signature' THEN 1 END) as signature,
-        COUNT(CASE WHEN status = 'Hold' THEN 1 END) as hold,
-        COUNT(CASE WHEN status = 'Approved' THEN 1 END) as approved,
-        SUM(paid_amount) as totalPaid,
-        SUM(due_amount) as totalDue
-      FROM projects
-    `);
-    const data = stats[0];
-    res.json({
-      success: true,
-      stats: {
-        leads: Number(data.leads),
-        bidding: Number(data.bidding),
-        signature: Number(data.signature),
-        hold: Number(data.hold),
-        approved: Number(data.approved),
-        totalPaid: Number(data.totalPaid || 0),
-        totalDue: Number(data.totalDue || 0),
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= USERS =================
-app.get("/api/users", async (req, res) => {
-  try {
-    const users = await queryDB(
-      "SELECT id, name, email, role, phone, about, avatar FROM users"
-    );
-    res.json({ success: true, users });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Error fetching users" });
-  }
-});
-
-app.get("/api/users/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const rows = await queryDB(
-      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
-      [id]
-    );
-    if (!rows || rows.length === 0)
-      return res.status(404).json({ success: false, message: "User not found" });
-    res.json({ success: true, user: rows[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-app.put("/api/users/:id/profile", async (req, res) => {
-  const { id } = req.params;
-  const { name, phone, about, avatar } = req.body; 
-  if (avatar && avatar.length > 7_000_000) {
-    return res.status(400).json({
-      success: false,
-      message: "Profile image too large. Please upload a smaller image."
-    });
-  }
-  try {
-    await queryDB(
-      "UPDATE users SET name=?, phone=?, about=?, avatar=? WHERE id=?",
-      [name, phone, about, avatar, id]
-    );
-    const updatedUser = await queryDB(
-      "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
-      [id]
-    );
-    res.json({ success: true, user: updatedUser[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-app.delete("/api/users/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    await queryDB("DELETE FROM users WHERE id=?", [id]);
-    res.json({ success: true, message: "User deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ================= PROJECTS / DEALS =================
-app.get("/api/projects", async (req, res) => {
-  try {
-    const rows = await queryDB(`
-      SELECT id, deal_name, deal_owner, address, status, paid_amount, due_amount,
-             description, contact, company, amount, created_at
-      FROM projects
-      ORDER BY created_at DESC
-    `);
-    res.json({ success: true, projects: rows });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/api/projects", async (req, res) => {
-  const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
-  if (!deal_name) return res.json({ success: false, message: "Deal Name is required" });
-  try {
-    const result = await queryDB(
-      `INSERT INTO projects
-       (deal_name, deal_owner, address, status, paid_amount, due_amount, description, contact, company, amount, created_at)
-       VALUES (?, ?, ?, 'Lead', 0, 0, ?, ?, ?, ?, NOW())`,
-      [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0]
-    );
-    const project = await queryDB("SELECT * FROM projects WHERE id = ?", [result.insertId]);
-    res.json({ success: true, project: project[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/api/projects/:id/status", async (req, res) => {
-  const { status } = req.body;
-  const { id } = req.params;
-  try {
-    await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/api/projects/:id", async (req, res) => {
-  const { id } = req.params;
-  const { deal_name, deal_owner, address, description, contact, company, amount } = req.body;
-  try {
-    await queryDB(
-      `UPDATE projects SET deal_name=?, deal_owner=?, address=?, description=?, contact=?, company=?, amount=? WHERE id=?`,
-      [deal_name, deal_owner || "", address || "", description || "", contact || "", company || "", amount || 0, id]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.delete("/api/projects/:id", async (req, res) => {
-  try {
-    await queryDB("DELETE FROM projects WHERE id=?", [req.params.id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= DELETE COMPANY =================
-app.delete("/api/companies/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await queryDB("DELETE FROM company WHERE id = ?", [id]);
-    if (result.affectedRows > 0) {
-      res.json({ success: true, message: "Company deleted successfully" });
-    } else {
-      res.status(404).json({ success: false, error: "Company not found" });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= CLIENTS =================
-app.get("/api/clients", async (req, res) => {
-  try {
-    const rows = await queryDB("SELECT * FROM clients ORDER BY id ASC");
-    res.json({ success: true, clients: rows });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/api/clients", async (req, res) => {
-  const { clientName, companyName, email, salesRep } = req.body;
-  try {
-    await queryDB(
-      "INSERT INTO clients (clientName, companyName, email, salesRep) VALUES (?, ?, ?, ?)",
-      [clientName, companyName, email, salesRep]
-    );
-    res.json({ success: true, message: "Client added successfully" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.delete("/api/clients/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await queryDB("DELETE FROM clients WHERE id = ?", [id]);
-    if (result.affectedRows > 0) {
-      res.json({ success: true, message: "Client deleted" });
-    } else {
-      res.status(404).json({ success: false, error: "Client not found" });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= TASKS API =================
-app.get("/api/tasks", async (req, res) => {
-  try {
-    const tasks = await queryDB("SELECT * FROM tasks ORDER BY created_at DESC");
-    const tasksWithComments = await Promise.all(tasks.map(async (task) => {
-      const comments = await queryDB(
-        "SELECT * FROM task_comments WHERE task_id = ? ORDER BY created_at ASC", 
-        [task.id]
-      );
-      return { ...task, comments: comments || [] };
-    }));
-    res.json({ success: true, tasks: tasksWithComments });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/api/tasks/:id/comments", async (req, res) => {
-  const { id } = req.params;
-  const { user_name, comment_text } = req.body;
-  try {
-    await queryDB(
-      "INSERT INTO task_comments (task_id, user_name, comment_text) VALUES (?, ?, ?)",
-      [id, user_name, comment_text]
-    );
-    res.json({ success: true, message: "Comment added" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/api/tasks", async (req, res) => {
-  const { title, priority, deadline, user_id, notes, assigned_user, creator_name } = req.body;
-  if (!user_id) return res.status(400).json({ success: false, message: "User ID is required" });
-  try {
-    const result = await queryDB(
-      "INSERT INTO tasks (title, priority, deadline, user_id, status, notes, taskmate, creator_name) VALUES (?, ?, ?, ?, 'Pending', ?, ?, ?)",
-      [title, priority, deadline || null, user_id, notes || "", assigned_user || null, creator_name || "Admin"]
-    );
-    const newId = result.insertId || result.id;
-    const newTask = await queryDB("SELECT * FROM tasks WHERE id = ?", [newId]);
-    res.json({ success: true, task: newTask[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/api/tasks/:id", async (req, res) => {
-  const { id } = req.params;
-  const { title, priority, deadline, notes, assigned_user } = req.body;
-  try {
-    await queryDB(
-      "UPDATE tasks SET title = ?, priority = ?, deadline = ?, notes = ?, taskmate = ? WHERE id = ?",
-      [title, priority, deadline || null, notes || "", assigned_user || null, id]
-    );
-    res.json({ success: true, message: "Task updated successfully" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/api/tasks/:id/status", async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  try {
-    await queryDB("UPDATE tasks SET status = ? WHERE id = ?", [status, id]);
-    res.json({ success: true, message: "Task status updated" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.delete("/api/tasks/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    await queryDB("DELETE FROM tasks WHERE id = ?", [id]);
-    res.json({ success: true, message: "Task deleted" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= PROJECT COMMENTS API =================
-app.get("/api/projects-detailed", async (req, res) => {
-  try {
-    const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
-    const projectsWithComments = await Promise.all(projects.map(async (proj) => {
-      const comments = await queryDB(
-        "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
-        [proj.id]
-      );
-      return { ...proj, comments: comments || [] };
-    }));
-    res.json({ success: true, projects: projectsWithComments });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/api/projects/:id/comments", async (req, res) => {
-  const { id } = req.params;
-  const { user_name, comment_text } = req.body;
-  try {
-    await queryDB(
-      "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
-      [id, user_name, comment_text]
-    );
-    res.json({ success: true, message: "Comment added to project" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= PROPOSALS API (Fix for Projects & Jobs Page) =================
-app.get("/api/proposals-detailed", async (req, res) => {
-  try {
-    const proposals = await queryDB("SELECT * FROM proposals ORDER BY created_at DESC");
-    const proposalsWithComments = await Promise.all(proposals.map(async (prop) => {
-      // Reusing the project_comments table for simplicity as previously suggested
-      const comments = await queryDB(
-        "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
-        [prop.id]
-      );
-      return { ...prop, comments: comments || [] };
-    }));
-    res.json({ success: true, projects: proposalsWithComments });
-  } catch (err) {
-    console.error("Fetch Proposals Error:", err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/api/proposals/:id/comments", async (req, res) => {
-  const { id } = req.params;
-  const { user_name, comment_text } = req.body;
-  try {
-    await queryDB(
-      "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
-      [id, user_name, comment_text]
-    );
-    res.json({ success: true, message: "Comment added to proposal" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================= SERVER =================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+export default Tasks;
