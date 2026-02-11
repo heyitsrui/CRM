@@ -88,3 +88,6 @@ CREATE TABLE project_comments (
 
 INSERT INTO tasks (title, priority, user_id, status) 
 VALUES ('Test Task', 'Medium', 1, 'Pending');
+
+
+ALTER TABLE users MODIFY COLUMN avatar LONGTEXT; wait di pa sure??????????????
