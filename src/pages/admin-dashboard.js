@@ -10,20 +10,25 @@ import Company from "./company";
 import Client from './client';
 import Projects from './projects';
 import CPass from "./c-pass";
+import Finance from "./finance";
 
 import {
   LayoutGrid,
   FileText,
   Users,
   DollarSign,
+  TrendingUp,
 } from "lucide-react";
 
 import "../styles/dashboard.css";
 
-/* --- Sub-Component: Dashboard Overview --- */
-const DashboardOverview = ({ stats, activities }) => (
-  <div className="dashboard-content">
-    {/* Stats Cards */}
+const DashboardOverview = ({ stats, activities }) => {
+  // Logic Fix: Total Contract Value is the sum of what's paid and what's still owed
+  const totalRevenue = (Number(stats?.totalPaid) || 0) + (Number(stats?.totalDue) || 0);
+
+  return (
+    <div className="dashboard-content">
+    {/* Status Stats Cards */}
     <div className="stats-grid">
       <div className="stat-card">
         <div className="icon-circle blue"><LayoutGrid size={20} /></div>
@@ -62,25 +67,25 @@ const DashboardOverview = ({ stats, activities }) => (
       </div>
     </div>
 
-    {/* Money Stats */}
-    <div className="money-grid">
-      <div className="money-card">
-        <DollarSign className="money-icon" />
+    {/* Simplified Money Stats: Only Paid and Due */}
+    <div className="money-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginTop: '20px' }}>
+      <div className="money-card" style={{ borderLeft: '5px solid #22c55e' }}>
+        <DollarSign className="money-icon" style={{ color: '#22c55e' }} />
         <div>
-          <h3>₱{(stats?.totalPaid || 0).toLocaleString()}</h3>
+          <h3>₱{(Number(stats?.totalPaid) || 0).toLocaleString()}</h3>
           <p>Total Paid Amount</p>
         </div>
       </div>
-      <div className="money-card">
-        <DollarSign className="money-icon" />
+      <div className="money-card" style={{ borderLeft: '5px solid #ef4444' }}>
+        <DollarSign className="money-icon" style={{ color: '#ef4444' }} />
         <div>
-          <h3>₱{(stats?.totalDue || 0).toLocaleString()}</h3>
+          <h3>₱{(Number(stats?.totalDue) || 0).toLocaleString()}</h3>
           <p>Total Due Amount</p>
         </div>
       </div>
     </div>
 
-    {/* Activity & Chart */}
+    {/* Activity & Chart Section */}
     <div className="bottom-sections">
       <div className="chart-box">
         <h3>Project Status Overview</h3>
@@ -104,6 +109,7 @@ const DashboardOverview = ({ stats, activities }) => (
     </div>
   </div>
 );
+}
 
 /* --- Main Dashboard Component --- */
 export default function Dashboard() {
@@ -113,7 +119,6 @@ export default function Dashboard() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const navigate = useNavigate();
 
-  // 1. AUTH & SESSION CHECK
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("loggedInUser"));
     if (!user) {
@@ -123,23 +128,15 @@ export default function Dashboard() {
     }
   }, [navigate]);
 
-  const refreshUserData = () => {
-    const updatedUser = JSON.parse(localStorage.getItem("loggedInUser"));
-    setLoggedInUser(updatedUser); // This triggers the TopNav to re-render
-  };
-
-  // 2. AUTO-REFLECT DATA FETCHING
-  // This useEffect runs on mount AND every time activeIndex changes
   useEffect(() => {
     if (!loggedInUser) return;
+
     const fetchData = async () => {
       try {
-        // Fetch Stats
         const statsRes = await fetch("http://localhost:5000/api/dashboard-stats");
         const statsData = await statsRes.json();
         if (statsData.success) setStats(statsData.stats);
 
-        // Fetch Activity
         const activityRes = await fetch("http://localhost:5000/api/recent-activity");
         const activityData = await activityRes.json();
         if (activityData.success) setActivities(activityData.activities);
@@ -148,36 +145,49 @@ export default function Dashboard() {
       }
     };
 
-    // Only fetch data if we are looking at the Overview tab (Index 0)
-    if (activeIndex === 0) {
-      fetchData();
-    }
-  }, [loggedInUser, activeIndex]); // Dependency array ensures refresh on tab switch
+    if (activeIndex === 0) fetchData();
+  }, [loggedInUser, activeIndex]);
 
-  // 3. LOGOUT HANDLER
   const handleLogout = () => {
     localStorage.removeItem("loggedInUser");
     navigate("/");
   };
-  
+
+  const refreshUserData = () => {
+    const updatedUser = JSON.parse(localStorage.getItem("loggedInUser"));
+    setLoggedInUser(updatedUser);
+  };
 
   const renderContent = () => {
     switch (activeIndex) {
       case 0:
         return <DashboardOverview stats={stats} activities={activities} />;
       case 1:
-        // Pass the actual user role to the Proposal component
-        return <Proposal userRole={loggedInUser?.role} />;
-      case 'clients':
-        return <Client />;
-      case 'company':
-        return <Company />;
+        // Log this to make sure 'role' exists here
+        console.log("Passing to Proposal:", loggedInUser); 
+        return <Proposal currentUser={loggedInUser} />;
       case 2:
-        return <Projects />;
-      case 3:
-        return <Tasks currentUser={loggedInUser} />;
-      case 5:
-        return <UserManagement currentUser={loggedInUser} />;
+        return <Projects currentUser={loggedInUser} />;
+      case 3: 
+        return <Finance loggedInUser={loggedInUser} />;
+      case 'clients':
+        return <Client userRole={loggedInUser?.role} />;
+      case 'company':
+        return <Company userRole={loggedInUser?.role} />;
+      case 4:
+        return <Tasks loggedInUser={loggedInUser} />
+      case 6:
+        // SECURED CASE: Only mount UserManagement if user is admin
+        if (loggedInUser?.role === 'admin') {
+          return <UserManagement currentUser={loggedInUser} />;
+        } else {
+          return (
+            <div className="dashboard-content">
+              <h2>Access Denied</h2>
+              <p>You do not have permission to access User Management.</p>
+            </div>
+          );
+        }
       case 99: 
         return <MyProfile user={loggedInUser} onProfileUpdate={refreshUserData} />;
       case 100:
@@ -197,7 +207,8 @@ export default function Dashboard() {
       <Sidebar 
         activeIndex={activeIndex} 
         setActiveIndex={setActiveIndex} 
-        onLogout={handleLogout} 
+        onLogout={handleLogout}
+        currentUser={loggedInUser} // Passing the user for role-based filtering
       />
       
       <main className="main-area">
