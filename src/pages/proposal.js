@@ -2,13 +2,16 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "../styles/proposal.css";
 
-const Proposal = () => {
+const Proposal = ({ currentUser }) => {
   const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  const isAdmin = true;
+  console.log("Current User Data:", currentUser);
+  // ✅ ROLE PERMISSION: Only Admin, Manager, and Executive can modify data
+  const allowedRoles = ['admin', 'manager', 'executive'];
+ const canEdit = currentUser?.role && allowedRoles.includes(currentUser.role.toLowerCase())
 
   const initialForm = {
     deal_name: "",
@@ -16,7 +19,7 @@ const Proposal = () => {
     address: "",
     company: "",
     contact: "",
-    amount: "",
+    total_amount: "",
     description: ""
   };
 
@@ -40,6 +43,7 @@ const Proposal = () => {
   };
 
   const submitDeal = async () => {
+    if (!canEdit) return; // Security guard
     if (!form.deal_name) return alert("Deal name required");
 
     try {
@@ -62,6 +66,7 @@ const Proposal = () => {
   };
 
   const updateStatus = async (id, status) => {
+    if (!canEdit) return; // Security guard
     try {
       await axios.put(
         `http://localhost:5000/api/projects/${id}/status`,
@@ -74,6 +79,7 @@ const Proposal = () => {
   };
 
   const deleteDeal = async (id) => {
+    if (!canEdit) return; // Security guard
     if (!window.confirm("Delete this deal?")) return;
     try {
       await axios.delete(`http://localhost:5000/api/projects/${id}`);
@@ -83,14 +89,20 @@ const Proposal = () => {
     }
   };
 
-  const onDragStart = (e, id) => e.dataTransfer.setData("id", id);
+  // ✅ Drag and Drop restricted by canEdit
+  const onDragStart = (e, id) => {
+    if (!canEdit) return e.preventDefault();
+    e.dataTransfer.setData("id", id);
+  };
 
   const onDrop = (e, status) => {
+    if (!canEdit) return;
     const id = e.dataTransfer.getData("id");
     updateStatus(id, status);
   };
 
   const handleEditClick = (p) => {
+    if (!canEdit) return;
     setEditing(p);
     setForm({
       deal_name: p.deal_name || "",
@@ -98,11 +110,13 @@ const Proposal = () => {
       address: p.address || "",
       company: p.company || "",
       contact: p.contact || "",
-      amount: p.amount || "",
+      total_amount: p.total_amount || "",
       description: p.description || ""
     });
     setShowModal(true);
   };
+
+  
 
   return (
     <div className="proposal-page">
@@ -115,16 +129,19 @@ const Proposal = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button
-            className="create-btn"
-            onClick={() => {
-              setEditing(null);
-              setForm(initialForm);
-              setShowModal(true);
-            }}
-          >
-            + Create Deal
-          </button>
+          {/* ✅ ONLY SHOW CREATE BUTTON IF AUTHORIZED */}
+          {canEdit && (
+            <button
+              className="create-btn"
+              onClick={() => {
+                setEditing(null);
+                setForm(initialForm);
+                setShowModal(true);
+              }}
+            >
+              + Create Deal
+            </button>
+          )}
         </div>
       </div>
 
@@ -134,7 +151,7 @@ const Proposal = () => {
             <div
               key={col}
               className="column"
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => canEdit && e.preventDefault()}
               onDrop={(e) => onDrop(e, col)}
             >
               <div className={`column-header ${col.toLowerCase()}`}>
@@ -153,13 +170,14 @@ const Proposal = () => {
                     <div
                       key={p.id}
                       className="card"
-                      draggable
+                      draggable={canEdit} // ✅ DRAGGING DISABLED FOR NON-EDITORS
                       onDragStart={(e) => onDragStart(e, p.id)}
                     >
                       <div className="card-top">
                         <h4>{p.deal_name}</h4>
 
-                        {isAdmin && (
+                        {/* ✅ ONLY SHOW EDIT MENU IF AUTHORIZED */}
+                        {canEdit && (
                           <div className="menu">
                             ⋮
                             <div className="menu-dropdown">
@@ -182,7 +200,7 @@ const Proposal = () => {
                         <p><b>Company:</b> {p.company}</p>
                         <p><b>Contact:</b> {p.contact}</p>
                         <p><b>Address:</b> {p.address}</p>
-                        <p className="amount">₱{p.amount}</p>
+                        <p className="amount">₱{Number(p.total_amount || 0).toLocaleString()}</p>
                         <p className="muted">{p.description}</p>
 
                         <div className="card-footer">
@@ -201,8 +219,8 @@ const Proposal = () => {
         </div>
       </div>
 
-      {/* MODAL COMPONENT */}
-      {showModal && (
+      {/* ✅ MODAL SECURITY CHECK */}
+      {showModal && canEdit && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
@@ -238,8 +256,8 @@ const Proposal = () => {
               <input 
                 placeholder="Amount" 
                 type="number"
-                value={form.amount} 
-                onChange={(e) => setForm({ ...form, amount: e.target.value })} 
+                value={form.total_amount} 
+                onChange={(e) => setForm({ ...form, total_amount: e.target.value })} 
               />
               <textarea 
                 placeholder="Description" 
