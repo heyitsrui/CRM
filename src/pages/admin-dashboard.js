@@ -8,6 +8,8 @@ import Proposal from "./proposal";
 import Tasks from "./tasks";
 import Company from "./company";
 import Client from './client';
+import Projects from './projects';
+import CPass from "./c-pass";
 
 import {
   LayoutGrid,
@@ -121,11 +123,15 @@ export default function Dashboard() {
     }
   }, [navigate]);
 
+  const refreshUserData = () => {
+    const updatedUser = JSON.parse(localStorage.getItem("loggedInUser"));
+    setLoggedInUser(updatedUser); // This triggers the TopNav to re-render
+  };
+
   // 2. AUTO-REFLECT DATA FETCHING
   // This useEffect runs on mount AND every time activeIndex changes
   useEffect(() => {
     if (!loggedInUser) return;
-
     const fetchData = async () => {
       try {
         // Fetch Stats
@@ -156,12 +162,6 @@ export default function Dashboard() {
   
 
   const renderContent = () => {
-
-  const refreshUserData = () => {
-  const updatedUser = JSON.parse(localStorage.getItem("loggedInUser"));
-  setLoggedInUser(updatedUser);
-  
-};
     switch (activeIndex) {
       case 0:
         return <DashboardOverview stats={stats} activities={activities} />;
@@ -172,12 +172,16 @@ export default function Dashboard() {
         return <Client />;
       case 'company':
         return <Company />;
+      case 2:
+        return <Projects />;
       case 3:
         return <Tasks currentUser={loggedInUser} />;
       case 5:
         return <UserManagement currentUser={loggedInUser} />;
       case 99: 
         return <MyProfile user={loggedInUser} onProfileUpdate={refreshUserData} />;
+      case 100:
+        return <CPass user={loggedInUser} />;
       default:
         return (
           <div className="dashboard-content">
