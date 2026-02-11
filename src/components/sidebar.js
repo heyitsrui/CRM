@@ -8,7 +8,8 @@ import {
   Users,
   LogOut,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  DollarSign
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
@@ -19,15 +20,16 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
     { label: 'Dashboard', icon: <Home size={20} /> },
     { label: 'Proposal', icon: <Lightbulb size={20} /> },
     { 
-      label: 'Projects & Jobs', 
+      label: 'Projects', 
       icon: <FileText size={20} />, 
-      isDropdown: true,
-      subItems: ['Project View', 'Temp Poles'] 
+    },
+    { 
+      label: 'Finance', 
+      icon: <DollarSign size={20} />, 
     },
     { 
       label: 'Tasks', 
       icon: <Landmark size={20} />, 
-      isDropdown: true,
       subItems: ['View all Task', 'In Progress', 'Completed'] 
     },
     { 
