@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Camera, User } from "lucide-react";
 import axios from "axios";
-import "../styles/my-profile.css";
+import "../styles/myprofile.css";
 
 const MyProfile = ({ user, onProfileUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
