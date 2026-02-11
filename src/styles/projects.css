@@ -1,203 +1,234 @@
-import React, { useState, useEffect } from "react";
-import { 
-  CheckCircle, 
-  Clock, 
-  MessageSquare, 
-  LayoutGrid, 
-  UserCircle, 
-  Trophy, 
-  Send, 
-  DollarSign, 
-  Building2, 
-  Phone 
-} from "lucide-react";
-import axios from "axios";
-import "../styles/projects.css";
+/* --- GLOBAL SCOPE PROTECTOR --- */
+/* This ensures NO style in this file touches the Login or other pages */
 
-const Projects = ({ currentUser }) => {
-  const [projects, setProjects] = useState([]);
-  const [visibleDetails, setVisibleDetails] = useState({});
-  const [visibleNotes, setVisibleNotes] = useState({});
-  const [newComment, setNewComment] = useState({});
+.projects-page-wrapper {
+  font-family: 'Inter', sans-serif;
+  color: #333;
+  background-color: #f4f7f6;
+  min-height: 100vh;
+}
 
-  // ✅ Debugging: This will tell you exactly what properties exist in your user object
-  useEffect(() => {
-    if (currentUser) {
-      console.log("Projects Component loaded. Current User Data:", currentUser);
-    } else {
-      console.warn("Projects Component Warning: currentUser is undefined/null.");
-    }
-  }, [currentUser]);
+.projects-page-wrapper .projects-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-  const fetchData = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/projects-detailed");
-      if (res.data.success) {
-        setProjects(res.data.projects);
-      }
-    } catch (err) { 
-      console.error("Project Fetch Error:", err); 
-    }
-  };
+/* --- STATS HEADER --- */
+.projects-page-wrapper .stats-header-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
 
-  useEffect(() => { 
-    fetchData(); 
-  }, []);
+.projects-page-wrapper .stat-pill-card {
+  background: white;
+  padding: 15px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
 
-  const handleAddComment = async (projId) => {
-    const commentText = newComment[projId]?.trim();
-    if (!commentText) return;
+.projects-page-wrapper .icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    if (!currentUser) {
-      alert("You must be logged in to post comments.");
-      return;
-    }
+.projects-page-wrapper .icon-wrap.blue { background: #e0f2fe; color: #0284c7; }
+.projects-page-wrapper .icon-wrap.green { background: #dcfce7; color: #16a34a; }
+.projects-page-wrapper .icon-wrap.purple { background: #f3e8ff; color: #9333ea; }
 
-    // ✅ FIXED: Check all possible name fields from your database
-    const authorName = currentUser.name || currentUser.username || currentUser.display_name || "User";
+.projects-page-wrapper .stat-text h3 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+.projects-page-wrapper .stat-text p { margin: 0; font-size: 0.85rem; color: #64748b; }
 
-    try {
-      await axios.post(`http://localhost:5000/api/projects/${projId}/comments`, {
-        user_name: authorName,
-        comment_text: commentText
-      });
-      
-      setNewComment(prev => ({ ...prev, [projId]: "" }));
-      fetchData(); // Refresh list to show the new comment
-    } catch (err) {
-      console.error("Comment Error:", err);
-      alert("Failed to post comment. Check server connection.");
-    }
-  };
+/* --- PROGRESS BAR --- */
+.projects-page-wrapper .progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  margin-top: 8px;
+  overflow: hidden;
+}
 
-  const toggleDetails = (id) => {
-    setVisibleDetails(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+.projects-page-wrapper .progress-bar-fill {
+  height: 100%;
+  background: #3ba3a5;
+  transition: width 0.5s ease;
+}
 
-  // Stats logic
-  const total = projects.length;
-  const approvedCount = projects.filter(p => 
-    p.status === "Approved" || p.status === "Signature"
-  ).length;
-  const progress = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
+/* --- PROJECT CARDS & INTERACTIVITY --- */
+.projects-page-wrapper .section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #1e293b;
+}
 
-  return (
-    <div className="projects-page-wrapper">
-      <div className="projects-container">
-        
-        {/* --- STATS HEADER --- */}
-        <div className="stats-header-grid">
-          <div className="stat-pill-card">
-            <div className="icon-wrap blue"><LayoutGrid size={20} /></div>
-            <div className="stat-text"><h3>{total}</h3><p>Active Projects</p></div>
-          </div>
-          <div className="stat-pill-card">
-            <div className="icon-wrap green"><CheckCircle size={20} /></div>
-            <div className="stat-text">
-              <h3>{progress}%</h3><p>Completion Rate</p>
-              <div className="progress-bar-bg">
-                <div className="progress-bar-fill" style={{ width: `${progress}%` }}></div>
-              </div>
-            </div>
-          </div>
-          <div className="stat-pill-card">
-            <div className="icon-wrap purple"><Trophy size={20} /></div>
-            <div className="stat-text"><h3>{approvedCount}</h3><p>Approved</p></div>
-          </div>
-        </div>
+.projects-page-wrapper .white-project-card {
+  background: white;
+  padding: 18px 22px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  border-left: 5px solid #3ba3a5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
 
-        <div className="projects-content">
-          <h2 className="section-title">Project Pipelines & Tracking</h2>
-          
-          <div className="project-items-stack">
-            {projects.length === 0 ? (
-              <div className="white-project-card">No active projects found.</div>
-            ) : (
-              projects.map((proj) => (
-                <div 
-                  key={proj.id} 
-                  className="white-project-card project-card-interactive" 
-                  onClick={() => toggleDetails(proj.id)}
-                >
-                  <div className="card-details">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h4>{proj.deal_name || "Project Item"}</h4>
-                      <span className={`status-badge ${proj.status?.toLowerCase() || 'lead'}`}>
-                        {proj.status || 'Lead'}
-                      </span>
-                    </div>
-                    
-                    <div className="meta-row">
-                      <span><Building2 size={14} /> {proj.company || "No Company"}</span>
-                      <span><UserCircle size={14} /> <strong>{proj.deal_owner || "Owner"}</strong></span>
-                      <span><DollarSign size={14} /> ₱{Number(proj.total_amount || 0).toLocaleString()}</span>
-                    </div>
+.projects-page-wrapper .project-card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
 
-                    {/* EXPANDED DETAILS */}
-                    {visibleDetails[proj.id] && (
-                      <div className="project-expanded-info" onClick={(e) => e.stopPropagation()}>
-                        <div className="details-grid">
-                          <p><Clock size={14}/> <strong>Date Created:</strong> {new Date(proj.created_at).toLocaleDateString()}</p>
-                          <p><Phone size={14}/> <strong>Contact:</strong> {proj.contact || "N/A"}</p>
-                          <p><strong>Site Address:</strong> {proj.address || "N/A"}</p>
-                        </div>
-                        <p className="proj-description"><strong>Project Notes:</strong> {proj.description || "No description provided."}</p>
-                        
-                        {/* DISCUSSION SECTION */}
-                        <div className="notes-toggle-wrapper">
-                          <button 
-                            className="notes-toggle-btn" 
-                            onClick={() => setVisibleNotes(prev => ({ ...prev, [proj.id]: !prev[proj.id] }))}
-                          >
-                            <MessageSquare size={12} /> Discussion ({proj.comments?.length || 0})
-                          </button>
-                          
-                          {visibleNotes[proj.id] && (
-                            <div className="comments-thread">
-                              <div className="comments-list">
-                                {proj.comments && proj.comments.length > 0 ? (
-                                  proj.comments.map((c, i) => (
-                                    <div key={i} className="comment-item">
-                                      {/* ✅ Shows user name with a bold highlight */}
-                                      <span className="comment-user">{c.user_name || "Unknown User"}:</span>
-                                      <span className="comment-text">{c.comment_text}</span>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <p className="no-comments">No updates yet.</p>
-                                )}
-                              </div>
-                              <div className="comment-input-row">
-                                <input 
-                                  type="text" 
-                                  placeholder="Type a project update..." 
-                                  value={newComment[proj.id] || ""}
-                                  onChange={(e) => setNewComment({...newComment, [proj.id]: e.target.value})}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleAddComment(proj.id);
-                                    }
-                                  }}
-                                />
-                                <button onClick={() => handleAddComment(proj.id)}>
-                                  <Send size={14} />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+.projects-page-wrapper .card-details {
+  flex: 1;
+}
 
-export default Projects;
+.projects-page-wrapper .card-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.projects-page-wrapper .meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 5px;
+}
+
+/* --- EXPANDED VIEW --- */
+.projects-page-wrapper .project-expanded-info {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+  animation: slideDown 0.3s ease-out;
+}
+
+.projects-page-wrapper .details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.projects-page-wrapper .details-grid p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.projects-page-wrapper .proj-description {
+  margin: 10px 0 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+/* --- BADGES --- */
+.projects-page-wrapper .status-badge {
+  font-size: 10px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Logic for status colors */
+.projects-page-wrapper .status-badge.lead { background: #e0f2fe; color: #0369a1; }
+.projects-page-wrapper .status-badge.bidding { background: #fef3c7; color: #b45309; }
+.projects-page-wrapper .status-badge.approved { background: #dcfce7; color: #15803d; }
+.projects-page-wrapper .status-badge.hold { background: #fee2e2; color: #b91c1c; }
+
+/* --- COMMENTS / DISCUSSION SECTION --- */
+.projects-page-wrapper .notes-toggle-btn {
+  background: #f1f5f9;
+  border: none;
+  color: #3ba3a5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  margin-top: 15px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.projects-page-wrapper .notes-toggle-btn:hover { background: #e2e8f0; }
+
+.projects-page-wrapper .comments-thread {
+  margin-top: 10px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  animation: slideDown 0.2s ease-out;
+}
+
+.projects-page-wrapper .comment-item {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.projects-page-wrapper .comment-user {
+  font-weight: bold;
+  color: #3ba3a5;
+  margin-right: 8px;
+}
+
+.projects-page-wrapper .comment-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.projects-page-wrapper .comment-input-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+}
+
+.projects-page-wrapper .comment-input-row input:focus { border-color: #3ba3a5; }
+
+.projects-page-wrapper .comment-input-row button {
+  background: #3ba3a5;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
