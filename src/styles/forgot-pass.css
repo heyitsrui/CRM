@@ -1,308 +1,393 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import { motion } from 'framer-motion';
-import '../styles/forgot-pass.css';
-import bgVideo from '../assets/video/background.mp4';
+/* ===============================
+   FONTS
+================================ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@800&display=swap');
 
-function ForgotPassword() {
-  const [step, setStep] = useState(1);
-  const [email, setEmail] = useState('');
-  // Changed otp to an array for the 6 boxes
-  const [otp, setOtp] = useState(['', '', '', '', '', '']); 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [otpMessage, setOtpMessage] = useState('');
-  const [otpCorrect, setOtpCorrect] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [canResend, setCanResend] = useState(true);
-  const [timer, setTimer] = useState(0);
-
-  const inputRefs = useRef([]);
-  const API = "http://localhost:5000";
-
-  // ================================
-  // OTP INPUT LOGIC
-  // ================================
-  const handleOtpChange = (value, index) => {
-    if (value !== "" && !/^[a-zA-Z0-9]$/.test(value)) return;
-
-    const newOtp = [...otp];
-    newOtp[index] = value.substring(value.length - 1);
-    setOtp(newOtp);
-
-    // Auto-focus next box
-    if (value && index < 5) {
-      inputRefs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyDown = (e, index) => {
-    // Backspace to previous box
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1].focus();
-    }
-  };
-
-  // ================================
-  // SEND OTP
-  // ================================
-  useEffect(() => {
-    let interval;
-    if (timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    } else {
-      setCanResend(true);
-    }
-    return () => clearInterval(interval);
-  }, [timer]);
-
-  const handleGetOtp = async () => {
-    setError('');
-    setOtpMessage('');
-    setSuccessMessage('');
-
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API}/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setOtpMessage('OTP sent to your email. Please check your inbox.');
-        setStep(2);
-        setOtpCorrect(false);
-      } else {
-        setError(data.message || 'Email not registered');
-      }
-    } catch {
-      setError('Cannot connect to server.');
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!canResend) return;
-    await handleGetOtp();
-    setCanResend(false);
-    setTimer(60); 
-  };
-
-  // ================================
-  // VERIFY OTP
-  // ================================
-  const handleConfirmOtp = async () => {
-    setError('');
-    setOtpMessage('');
-    
-    const otpString = otp.join('');
-    if (otpString.length < 6) {
-      setError('Please enter the full 6-digit OTP');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API}/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: otpString }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setOtpMessage('Correct OTP! Proceeding....');
-        setOtpCorrect(true);
-        setTimeout(() => {
-          setStep(3);
-          setOtpMessage('');
-        }, 800);
-      } else {
-        setError(data.message || 'Invalid or expired OTP');
-        setOtpCorrect(false);
-      }
-    } catch {
-      setError('Cannot connect to server.');
-    }
-  };
-
-  // ================================
-  // RESET PASSWORD
-  // ================================
-  const handleResetPassword = async () => {
-    setError('');
-    setSuccessMessage('');
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setSuccessMessage('Password updated successfully. Redirecting to login.');
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 3000);
-      } else {
-        setError(data.message || 'Failed to reset password');
-      }
-    } catch {
-      setError('Server error');
-    }
-  };
-
-  return (
-    <div className="fp-container">
-      <video autoPlay loop muted playsInline className="bg-video">
-        <source src={bgVideo} type="video/mp4" />
-      </video>
-
-      <div className="header-nav">
-        <img src="/vtic.webp" alt="VTIC Logo" className="logo-white" />
-        <a href="/" className="fp-back-nav">Back to login</a>
-      </div>
-
-      <div className="fp-left">
-        <div className="fp-overlay">
-          <div className="fp-text">
-            <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="branding-box">
-              <h1>FORGOT PASSWORD</h1>
-              <p>Reset your password.</p>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-
-      <div className="fp-right">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="fp-card fp-card-otp"
-        >
-          {step === 1 && (
-            <>
-              <h2>Forgot password?</h2>
-              <p className="fp-subtext">Please enter the email address associated with your account</p>
-              <hr className="fp-divider" />
-              {error && <div className="fp-error">{error}</div>}
-
-              <label className="fp-label" style={{ marginTop: '25px' }}>Email</label>
-              <input
-                type="email"
-                className="fp-input"
-                placeholder="Input your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button className="fp-btn" onClick={handleGetOtp}>Get OTP</button>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <h2>Confirm Email</h2>
-              <p className="fp-subtext">OTP has been sent. Please check your email</p>
-              <hr className="fp-divider" />
-              {otpMessage && <div className="fp-info">{otpMessage}</div>}
-              {error && <div className="fp-error">{error}</div>}
-
-              <label className="fp-label">OTP</label>
-              <div className="otp-input-container">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    type="text"
-                    maxLength="1"
-                    className="otp-box"
-                    value={digit}
-                    ref={(el) => (inputRefs.current[index] = el)}
-                    onChange={(e) => handleOtpChange(e.target.value, index)}
-                    onKeyDown={(e) => handleKeyDown(e, index)}
-                  />
-                ))}
-              </div>
-
-              <button className="fp-btn" onClick={handleConfirmOtp}>Confirm OTP</button>
-              <div className="resend-container">
-                <span className="resend-text">Didn't you receive any code? </span>
-                <button 
-                  type="button" 
-                  className={`resend-link ${!canResend ? 'disabled' : ''}`} 
-                  onClick={handleResendOtp}
-                  disabled={!canResend}
-                >
-                  {canResend ? "Resend Code" : `Wait ${timer}s`}
-                </button>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <h2>Reset password</h2>
-              {error && <div className="fp-error">{error}</div>}
-              {successMessage && <div className="fp-success">{successMessage}</div>}
-
-              <label className="fp-label">New password</label>
-              <div className="password-wrapper">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  className="fp-input"
-                  placeholder="New password"
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-
-              <label className="fp-label">Confirm password</label>
-              <div className="password-wrapper">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  className="fp-input"
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-                <button type="button" className="eye-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              <button
-                className="fp-btn secondary"
-                onClick={handleResetPassword}
-              >
-                Confirm
-              </button>
-            </>
-          )}
-        </motion.div>
-      </div>
-    </div>
-  );
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('https://fonts.cdnfonts.com/s/14237/GlacialIndifference-Regular.woff') format('woff');
 }
 
-export default ForgotPassword;
+/* ===============================
+   RESET
+================================ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===============================
+   MAIN CONTAINER (same behavior as login-container)
+================================ */
+.fp-container {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+}
+
+/* ===============================
+   BACKGROUND VIDEO
+================================ */
+.bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+  filter: brightness(0.65);
+  pointer-events: none;
+}
+
+/* ===============================
+   HEADER NAV
+================================ */
+.header-nav {
+  position: absolute;
+  top: 40px;
+  width: 100%;
+  padding: 0 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.logo-white {
+  height: 40px;
+  filter: brightness(0) invert(1);
+}
+
+.visit-link,
+.fp-back-nav {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ===============================
+   CONTENT WRAPPER (matches login layout)
+================================ */
+.fp-container-inner {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8%;
+  z-index: 5;
+}
+
+/* ===============================
+   LEFT BRANDING
+================================ */
+.fp-left {
+  color: white;
+  max-width: 550px;
+}
+
+.fp-overlay {
+  display: flex;
+  flex-direction: column;
+}
+
+.fp-text h1 {
+  font-family: 'League Spartan', sans-serif;
+  font-size: 4.8rem;
+  line-height: 0.9;
+  letter-spacing: -2px;
+  margin-bottom: 25px;
+}
+
+.fp-text p {
+  font-family: 'Glacial Indifference', sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* ===============================
+   RIGHT SIDE CARD
+================================ */
+.fp-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fp-card {
+  background: #fff;
+  width: 100%;
+  max-width: 580px;
+  padding: 60px;
+  border-radius: 40px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+  position: relative;
+}
+
+/* ===============================
+   CARD TEXT
+================================ */
+.fp-card h2 {
+  font-size: 3.8rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 5px;
+}
+
+.fp-subtext {
+  font-family: 'Glacial Indifference', sans-serif;
+  color: #333;
+  font-size: 1.05rem;
+  margin-bottom: 30px;
+}
+
+.divider {
+  border: none;
+  border-top: 1.5px solid #000;
+  margin-bottom: 35px;
+}
+
+/* ===============================
+   FORM
+================================ */
+.fp-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+}
+
+.fp-input {
+  width: 100%;
+  padding: 16px 22px;
+  border: 1.2px solid #a0a0a0;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.3s;
+  margin-bottom: 18px;
+}
+
+.fp-input:focus {
+  border-color: #000;
+}
+
+.fp-input::placeholder {
+  color: #aaa;
+}
+
+/* ===============================
+   PASSWORD
+================================ */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 18px; /* Move the margin from input to the wrapper */
+}
+
+.password-wrapper .fp-input {
+  margin-bottom: 0; /* Remove margin here so the button stays centered vertically */
+  padding-right: 50px; /* Make room so text doesn't go under the eye icon */
+}
+
+.eye-btn {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%; /* Ensures the clickable area is vertically centered */
+}
+
+.eye-btn:hover {
+  color: #000;
+}
+
+/* ===============================
+   BUTTONS
+================================ */
+.fp-btn {
+  width: 100%;
+  background: #000;
+  color: white;
+  border: none;
+  padding: 22px;
+  border-radius: 60px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: transform 0.2s, background 0.3s, box-shadow 0.2s;
+}
+
+.fp-btn:hover {
+  background: #222;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+
+.fp-btn:active {
+  transform: scale(0.97);
+}
+
+.fp-btn.secondary {
+  background: #000;
+}
+
+/* ===============================
+   MESSAGES
+================================ */
+.fp-error,
+.error-bubble {
+  background: #fff0f0;
+  color: #d63031;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 18px;
+  font-weight: 600;
+}
+
+.fp-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.fp-info {
+  background: #e3f2fd;
+  color: #0d47a1;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+/* ===============================
+   RESPONSIVE
+================================ */
+@media (max-width: 1100px) {
+  .fp-container-inner {
+    flex-direction: column;
+    padding: 100px 20px;
+  }
+
+  .fp-left {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+
+  .fp-text h1 {
+    font-size: 3rem;
+  }
+
+  .header-nav {
+    padding: 20px;
+  }
+
+  .fp-card {
+    padding: 40px 28px;
+    border-radius: 28px;
+  }
+}
+
+/* ===============================
+   RESEND OTP STYLES
+================================ */
+.resend-container {
+  margin-top: 20px;       /* Added space between the Confirm button and this text */
+  margin-bottom: 0; 
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* THIS CENTERS THE CONTENT */
+  gap: 5px;
+  width: 100%;           /* Ensures it takes full width to allow centering */
+}
+
+.resend-text {
+  color: #999; /* Grey text from your image */
+  font-family: 'Glacial Indifference', sans-serif;
+}
+
+.resend-link {
+  background: none;
+  border: none;
+  color: #1a1a1a; /* Dark bold text from your image */
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+  text-decoration: none;
+}
+
+.resend-link:hover {
+  text-decoration: underline;
+}
+
+.resend-link.disabled {
+  color: #ccc;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* ===============================
+   OTP SEGMENTED INPUT
+================================ */
+.otp-input-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 25px;
+  margin-top: 10px;
+}
+
+.otp-box {
+  width: 100%;
+  height: 65px;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+  background-color: #f5f5f5; /* Light grey like your image */
+  border-radius: 16px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.otp-box:focus {
+  background-color: #fff;
+  border-color: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Adjust for mobile screens */
+@media (max-width: 480px) {
+  .otp-box {
+    width: 45px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  .otp-input-container {
+    gap: 5px;
+  }
+}
