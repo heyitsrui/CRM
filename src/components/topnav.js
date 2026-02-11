@@ -26,15 +26,24 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
       <div className="user-block" ref={dropdownRef}>
         <div className="user-info" onClick={() => setIsOpen(!isOpen)} >
           {/* Dynamically reflects name from profile update */}
-          <span className="user-name" style={{fontSize: "20px", fontFamil: "Poppiins"}}>{loggedInUser?.name || "User"}</span>
+          <span className="user-name" style={{ fontSize: "20px", fontFamily: "Poppins", display: "block" }}>
+            {loggedInUser?.name || "User"}</span>
           <span className="user-email">{loggedInUser?.email}</span>
         </div>
         
         <div className="user-avatar" onClick={() => setIsOpen(!isOpen)}>
           <img 
-            src={loggedInUser?.avatar || "default-avatar.png"} 
+            src={
+              loggedInUser?.avatar && loggedInUser.avatar.includes("data:image")
+                ? loggedInUser.avatar 
+                : "/default-avatar.png"
+            }
             alt="User" 
             className="user-avatar-img"
+            onError={(e) => {
+              e.target.onerror = null; 
+              e.target.src = "/default-avatar.png";
+            }}
           />
         </div>
 
@@ -44,7 +53,13 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
               <User size={18} />
               <span>My Profile</span>
             </button>
-            <button className="dropdown-item" onClick={() => setIsOpen(false)}>
+            <button 
+              className="dropdown-item" 
+              onClick={() => {
+                if (onNavigate) onNavigate(100);
+                setIsOpen(false);
+              }}
+            >
               <Lock size={18} />
               <span>Change Password</span>
             </button>
