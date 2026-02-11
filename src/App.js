@@ -7,7 +7,7 @@ import bgVideo from './assets/video/background.mp4';
 import CreateAccount from './pages/create-account'; 
 import ConfirmEmail from './pages/confirm-email';
 import ForgotPassword from './pages/forgot-pass';
-import AdminDashboard from './pages/admin-dashboard';
+import AdminDashboard from './pages/admin-dashboard'; // This is your shared Dashboard component
 
 // ==================== LOGIN VIEW ====================
 const LoginView = () => {
@@ -15,52 +15,35 @@ const LoginView = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate(); // Now safe inside Router context
+  const navigate = useNavigate();
 
- const handleLogin = async (e) => {
-  e.preventDefault();
-  setError("");
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
 
-  try {
-    const response = await fetch("http://localhost:5000/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (data.success) {
-      // ✅ Store the full user object in localStorage
-      localStorage.setItem("loggedInUser", JSON.stringify(data.user));
+      if (data.success) {
+        // ✅ Store the full user object in localStorage
+        localStorage.setItem("loggedInUser", JSON.stringify(data.user));
 
-      // Role-based routing
-      switch (data.user.role) {
-        case "admin":
-          navigate("/admin-dashboard");
-          break;
-        case "manager":
-          navigate("/manager-dashboard");
-          break;
-        case "executive":
-          navigate("/executive-dashboard");
-          break;
-        case "finance":
-          navigate("/finance-dashboard");
-          break;
-        case "viewer":
-          navigate("/viewer-dashboard");
-          break;
-        default:
-          navigate("/");
+        // ✅ Unified Routing: Everyone goes to the same dashboard URL
+        // Your Sidebar.js and Dashboard.js will handle role-based visibility internally
+        navigate("/dashboard");
+      } else {
+        setError(data.message);
       }
-    } else {
-      setError(data.message);
+    } catch (err) {
+      setError("Cannot connect to server. Check if backend is running.");
     }
-  } catch (err) {
-    setError("Cannot connect to server. Check if backend is running.");
-  }
-};
+  };
 
   return (
     <div className="login-container">
@@ -151,12 +134,12 @@ function App() {
         <Route path="/confirm-email" element={<ConfirmEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Placeholder dashboards */}
-        <Route path="/admin-dashboard" element={<AdminDashboard/>}/>
-        <Route path="/manager-dashboard" element={<div>Manager Dashboard</div>} />
-        <Route path="/executive-dashboard" element={<div>Executive Dashboard</div>} />
-        <Route path="/finance-dashboard" element={<div>Finance Dashboard</div>} />
-        <Route path="/viewer-dashboard" element={<div>Viewer Dashboard</div>} />
+        {/* UNIFIED DASHBOARD ROUTE: 
+            One route for all users. The "AdminDashboard" component 
+            already has the logic to check currentUser.role.
+        */}
+        <Route path="/dashboard" element={<AdminDashboard/>}/>
+        
       </Routes>
     </Router>
   );
