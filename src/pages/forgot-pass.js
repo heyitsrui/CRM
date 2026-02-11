@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import '../styles/forgot-pass.css';
@@ -7,7 +7,8 @@ import bgVideo from '../assets/video/background.mp4';
 function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
+  // Changed otp to an array for the 6 boxes
+  const [otp, setOtp] = useState(['', '', '', '', '', '']); 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -15,12 +16,51 @@ function ForgotPassword() {
   const [successMessage, setSuccessMessage] = useState('');
   const [otpMessage, setOtpMessage] = useState('');
   const [otpCorrect, setOtpCorrect] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [canResend, setCanResend] = useState(true);
+  const [timer, setTimer] = useState(0);
 
+  const inputRefs = useRef([]);
   const API = "http://localhost:5000";
+
+  // ================================
+  // OTP INPUT LOGIC
+  // ================================
+  const handleOtpChange = (value, index) => {
+    if (value !== "" && !/^[a-zA-Z0-9]$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+
+    // Auto-focus next box
+    if (value && index < 5) {
+      inputRefs.current[index + 1].focus();
+    }
+  };
+
+  const handleKeyDown = (e, index) => {
+    // Backspace to previous box
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1].focus();
+    }
+  };
 
   // ================================
   // SEND OTP
   // ================================
+  useEffect(() => {
+    let interval;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else {
+      setCanResend(true);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
+
   const handleGetOtp = async () => {
     setError('');
     setOtpMessage('');
@@ -52,16 +92,23 @@ function ForgotPassword() {
     }
   };
 
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+    await handleGetOtp();
+    setCanResend(false);
+    setTimer(60); 
+  };
+
   // ================================
   // VERIFY OTP
   // ================================
   const handleConfirmOtp = async () => {
     setError('');
     setOtpMessage('');
-    setSuccessMessage('');
-
-    if (!otp) {
-      setError('Please enter the OTP');
+    
+    const otpString = otp.join('');
+    if (otpString.length < 6) {
+      setError('Please enter the full 6-digit OTP');
       return;
     }
 
@@ -69,14 +116,18 @@ function ForgotPassword() {
       const res = await fetch(`${API}/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email, otp: otpString }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        setOtpMessage('Correct OTP, you may proceed.');
+        setOtpMessage('Correct OTP! Proceeding....');
         setOtpCorrect(true);
+        setTimeout(() => {
+          setStep(3);
+          setOtpMessage('');
+        }, 800);
       } else {
         setError(data.message || 'Invalid or expired OTP');
         setOtpCorrect(false);
@@ -93,11 +144,6 @@ function ForgotPassword() {
     setError('');
     setSuccessMessage('');
 
-    if (!otpCorrect) {
-      setError('Please verify OTP first');
-      return;
-    }
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -113,19 +159,7 @@ function ForgotPassword() {
       const data = await res.json();
 
       if (data.success) {
-        setSuccessMessage('Password updated successfully! You may now login.');
-        setError('');
-
-        // Clear form fields
-        setEmail('');
-        setOtp('');
-        setPassword('');
-        setConfirmPassword('');
-        setOtpCorrect(false);
-        setOtpMessage('');
-        setStep(1);
-
-        // Optional: redirect after 3 seconds
+        setSuccessMessage('Password updated successfully. Redirecting to login.');
         setTimeout(() => {
           window.location.href = '/';
         }, 3000);
@@ -137,29 +171,17 @@ function ForgotPassword() {
     }
   };
 
-  const handleProceedReset = () => {
-    setStep(3);
-    setOtpMessage('');
-    setOtpCorrect(false);
-    setError('');
-    setSuccessMessage('');
-  };
-
   return (
     <div className="fp-container">
-
-      {/* Background Video */}
       <video autoPlay loop muted playsInline className="bg-video">
         <source src={bgVideo} type="video/mp4" />
       </video>
 
-      {/* Top Nav */}
       <div className="header-nav">
         <img src="/vtic.webp" alt="VTIC Logo" className="logo-white" />
         <a href="/" className="fp-back-nav">Back to login</a>
       </div>
 
-      {/* LEFT SIDE */}
       <div className="fp-left">
         <div className="fp-overlay">
           <div className="fp-text">
@@ -171,7 +193,6 @@ function ForgotPassword() {
         </div>
       </div>
 
-      {/* RIGHT SIDE CARD */}
       <div className="fp-right">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -179,8 +200,6 @@ function ForgotPassword() {
           transition={{ duration: 0.5 }}
           className="fp-card fp-card-otp"
         >
-
-          {/* STEP 1 */}
           {step === 1 && (
             <>
               <h2>Forgot password?</h2>
@@ -200,7 +219,6 @@ function ForgotPassword() {
             </>
           )}
 
-          {/* STEP 2 */}
           {step === 2 && (
             <>
               <h2>Confirm Email</h2>
@@ -210,23 +228,36 @@ function ForgotPassword() {
               {error && <div className="fp-error">{error}</div>}
 
               <label className="fp-label">OTP</label>
-              <input
-                className="fp-input"
-                placeholder="Input your OTP"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-              />
-              <button className="fp-btn" onClick={handleConfirmOtp}>Confirm OTP</button>
+              <div className="otp-input-container">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    maxLength="1"
+                    className="otp-box"
+                    value={digit}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    onChange={(e) => handleOtpChange(e.target.value, index)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                  />
+                ))}
+              </div>
 
-              {otpCorrect && (
-                <button className="fp-btn secondary fp-btn-bottom" onClick={handleProceedReset}>
-                  Proceed to Reset Password
+              <button className="fp-btn" onClick={handleConfirmOtp}>Confirm OTP</button>
+              <div className="resend-container">
+                <span className="resend-text">Didn't you receive any code? </span>
+                <button 
+                  type="button" 
+                  className={`resend-link ${!canResend ? 'disabled' : ''}`} 
+                  onClick={handleResendOtp}
+                  disabled={!canResend}
+                >
+                  {canResend ? "Resend Code" : `Wait ${timer}s`}
                 </button>
-              )}
+              </div>
             </>
           )}
 
-          {/* STEP 3 */}
           {step === 3 && (
             <>
               <h2>Reset password</h2>
@@ -239,6 +270,7 @@ function ForgotPassword() {
                   type={showPassword ? 'text' : 'password'}
                   className="fp-input"
                   placeholder="New password"
+                  value={password} 
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)}>
@@ -247,23 +279,26 @@ function ForgotPassword() {
               </div>
 
               <label className="fp-label">Confirm password</label>
-              <input
-                type="password"
-                className="fp-input"
-                placeholder="Confirm password"
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-
+              <div className="password-wrapper">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  className="fp-input"
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button type="button" className="eye-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
               <button
                 className="fp-btn secondary"
                 onClick={handleResetPassword}
-                disabled={!otpCorrect}
               >
                 Confirm
               </button>
             </>
           )}
-
         </motion.div>
       </div>
     </div>
