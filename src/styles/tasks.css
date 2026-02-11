@@ -362,3 +362,21 @@
     justify-content: space-between;
   }
 }
+
+.assigned-tag {
+  display: block;
+  margin-top: 10px;
+  color: #6366f1;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.btn-assign {
+  background: #6366f1;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+}
