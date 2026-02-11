@@ -440,34 +440,18 @@ app.post("/api/tasks", async (req, res) => {
 });
 
 // Update an existing task
-// Update task status in server.js
-app.put("/api/tasks/:id/status", async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  
-  try {
-    // Ensure the query uses the parameters correctly
-    await queryDB("UPDATE tasks SET status = ? WHERE id = ?", [status, id]);
-    res.json({ success: true, message: "Task status updated" });
-  } catch (err) {
-    console.error("DB Update Error:", err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-
 app.put("/api/tasks/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, description, priority, user_id } = req.body;
+  const { title, description, priority, user_id, status } = req.body;
 
   try {
     await queryDB(
-      "UPDATE tasks SET title = ?, description = ?, priority = ?, user_id = ? WHERE id = ?",
-      [title, description, priority, user_id, id]
+      "UPDATE tasks SET title = ?, description = ?, priority = ?, user_id = ?, status = ? WHERE id = ?",
+      [title, description || "", priority, user_id, status || 'Pending', id]
     );
-    res.json({ success: true, message: "Task updated successfully" });
+    res.json({ success: true, message: "Task updated" });
   } catch (err) {
-    console.error("Update Task Error:", err);
+    console.error("Update Task DB Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -551,6 +535,43 @@ app.post("/api/projects/:id/comments", async (req, res) => {
     res.json({ success: true, message: "Comment added to project" });
   } catch (err) {
     console.error("Post Comment Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================= COMPANIES API =================
+
+// GET all companies
+app.get("/api/companies", async (req, res) => {
+  try {
+    // Note: We use aliases (AS) to match the names your React frontend expects
+    const rows = await queryDB(`
+      SELECT 
+        id, 
+        company_name AS name, 
+        company_owner AS owner, 
+        types, 
+        email, 
+        description 
+      FROM company 
+      ORDER BY id ASC
+    `);
+    res.json({ success: true, companies: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST a new company
+app.post("/api/companies", async (req, res) => {
+  const { name, owner, types, email, description } = req.body;
+  try {
+    await queryDB(
+      "INSERT INTO company (company_name, company_owner, types, email, description) VALUES (?, ?, ?, ?, ?)",
+      [name, owner, types, email, description]
+    );
+    res.json({ success: true, message: "Company added successfully" });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
