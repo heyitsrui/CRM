@@ -126,12 +126,26 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    const users = await queryDB("SELECT * FROM users WHERE email = ? AND password = ?", [email, password]);
+    const users = await queryDB(
+      "SELECT id, name, email, password, role, phone, about, avatar FROM users WHERE email = ? AND password = ?", 
+      [email, password]
+    );
     if (users.length === 0)
       return res.status(400).json({ success: false, message: "Invalid email or password" });
 
     const user = users[0];
-    res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        phone: user.phone,
+        about: user.about,
+        avatar: user.avatar
+      } 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
