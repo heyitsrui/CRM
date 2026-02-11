@@ -2,13 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, X, Trash2 } from 'lucide-react';
 import '../styles/dashboard.css';
 
-const Client = () => {
+const Client = ({ userRole }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Updated form data to match: Client name, Company name, Email, Owner (Sales Rep)
+  // Define Permission: Only admin, manager, or executive can add/delete
+  const canEdit = userRole !== 'finance' && userRole !== 'viewer';
+
   const [formData, setFormData] = useState({
     clientName: '',
     companyName: '',
@@ -16,12 +18,9 @@ const Client = () => {
     salesRep: ''
   });
 
-  // ================= API CALLS =================
-
   const fetchClients = async () => {
     try {
       setIsLoading(true);
-      // Update this URL to your actual endpoint for clients
       const response = await fetch('http://localhost:5000/api/clients');
       const data = await response.json();
       if (data.success) {
@@ -36,17 +35,16 @@ const Client = () => {
   };
 
   const handleDelete = async (id) => {
+    // Extra safety check
+    if (!canEdit) return alert("You do not have permission to delete clients.");
+    
     if (window.confirm("Are you sure you want to delete this client?")) {
       try {
         const response = await fetch(`http://localhost:5000/api/clients/${id}`, {
           method: 'DELETE',
         });
         const data = await response.json();
-        if (data.success) {
-          fetchClients();
-        } else {
-          alert("Error deleting: " + data.error);
-        }
+        if (data.success) fetchClients();
       } catch (err) {
         console.error("Delete error:", err);
       }
@@ -57,11 +55,9 @@ const Client = () => {
     fetchClients();
   }, []);
 
-  // Logic to filter clients based on the new fields
   const filteredClients = useMemo(() => {
     const term = searchQuery.toLowerCase().trim();
     if (!term) return clients;
-
     return clients.filter((cl) => (
       cl.clientName?.toLowerCase().includes(term) ||
       cl.companyName?.toLowerCase().includes(term) ||
@@ -70,37 +66,37 @@ const Client = () => {
     ));
   }, [searchQuery, clients]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
   const toggleModal = () => {
+    if (!canEdit) return; // Prevent finance/viewer from opening modal
     setIsModalOpen(!isModalOpen);
     if (!isModalOpen) {
       setFormData({ clientName: '', companyName: '', email: '', salesRep: '' });
     }
   };
 
+  // ... handleInputChange and handleSubmit remain the same ...
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
+
     try {
       const response = await fetch('http://localhost:5000/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       const data = await response.json();
       if (data.success) {
         await fetchClients();
         toggleModal();
-      } else {
-        alert("Error saving client: " + data.error);
       }
     } catch (err) {
       console.error("Submission error:", err);
-      alert("Could not connect to the server.");
     }
   };
 
@@ -109,7 +105,10 @@ const Client = () => {
       <div className="view-header-tabs">
         <div className="tab active">All clients</div>
         <div className="header-actions">
-          <button className="add-company-btn" onClick={toggleModal}>Add client</button>
+          {/* HIDE ADD BUTTON FOR RESTRICTED ROLES */}
+          {canEdit && (
+            <button className="add-company-btn" onClick={toggleModal}>Add client</button>
+          )}
         </div>
       </div>
 
@@ -122,19 +121,14 @@ const Client = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery ? (
-            <X 
-              size={18} 
-              className="search-icon clear-icon" 
-              onClick={() => setSearchQuery('')} 
-              style={{ cursor: 'pointer' }}
-            />
+            <X size={18} className="search-icon clear-icon" onClick={() => setSearchQuery('')} />
           ) : (
             <Search size={18} className="search-icon" />
           )}
         </div>
       </div>
 
-      <div className="table-container">
+<div className="table-container">
         {isLoading ? (
           <div className="loading-state">Loading clients...</div>
         ) : (
@@ -146,40 +140,35 @@ const Client = () => {
                 <th>Company Name</th>
                 <th>Email</th>
                 <th>Sales Rep</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                {/* HIDE ACTION HEADER */}
+                {canEdit && <th style={{ textAlign: 'center' }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {filteredClients.length > 0 ? (
-                filteredClients.map((cl) => (
-                  <tr key={cl.id}>
-                    <td style={{ textAlign: 'center' }}>{cl.id}</td>
-                    <td className="company-name-cell">
-                      <span className="link-text">{cl.clientName}</span>
-                    </td>
-                    <td>{cl.companyName || '--'}</td>
-                    <td>{cl.email || '--'}</td>
-                    <td><span className="badge">{cl.salesRep || 'Unassigned'}</span></td>
+              {filteredClients.map((cl) => (
+                <tr key={cl.id}>
+                  <td style={{ textAlign: 'center' }}>{cl.id}</td>
+                  <td className="company-name-cell">
+                    <span className="link-text">{cl.clientName}</span>
+                  </td>
+                  <td>{cl.companyName || '--'}</td>
+                  <td>{cl.email || '--'}</td>
+                  <td><span className="badge">{cl.salesRep || 'Unassigned'}</span></td>
+                  
+                  {/* HIDE ACTION BUTTONS IN TABLE BODY */}
+                  {canEdit && (
                     <td style={{ textAlign: 'center' }}>
                       <button 
                         onClick={() => handleDelete(cl.id)}
+                        className="delete-icon-btn"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff4d4f' }}
                       >
                         <Trash2 size={18} />
                       </button>
                     </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
-                    {searchQuery 
-                      ? `No results found for "${searchQuery}"` 
-                      : "No clients found. Click 'Add client' to start."
-                    }
-                  </td>
+                  )}
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         )}
