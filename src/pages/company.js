@@ -2,13 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, X, Trash2 } from 'lucide-react';
 import '../styles/dashboard.css';
 
-const Company = () => {
+const Company = ({ userRole }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // 1. New state for search query
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ✅ PERMISSION CHECK: Only authorized roles can add or delete
+  const allowedRoles = ['admin', 'manager', 'executive'];
+  const canEdit = allowedRoles.includes(userRole?.toLowerCase());
 
   const [formData, setFormData] = useState({
     name: '',
@@ -17,8 +19,6 @@ const Company = () => {
     email: '',
     description: ''
   });
-
-  // ================= API CALLS =================
 
   const fetchCompanies = async () => {
     try {
@@ -37,6 +37,8 @@ const Company = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!canEdit) return; // Guard clause
+
     if (window.confirm("Are you sure you want to delete this company?")) {
       try {
         const response = await fetch(`http://localhost:5000/api/companies/${id}`, {
@@ -58,7 +60,6 @@ const Company = () => {
     fetchCompanies();
   }, []);
 
-  // 2. Logic to filter companies based on search
   const filteredCompanies = useMemo(() => {
     const term = searchQuery.toLowerCase().trim();
     if (!term) return companies;
@@ -77,6 +78,7 @@ const Company = () => {
   };
 
   const toggleModal = () => {
+    if (!canEdit && !isModalOpen) return; // Prevent opening if restricted
     setIsModalOpen(!isModalOpen);
     if (!isModalOpen) {
       setFormData({ name: '', owner: '', types: '', email: '', description: '' });
@@ -85,6 +87,8 @@ const Company = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
+
     try {
       const response = await fetch('http://localhost:5000/api/companies', {
         method: 'POST',
@@ -110,7 +114,10 @@ const Company = () => {
       <div className="view-header-tabs">
         <div className="tab active">All companies</div>
         <div className="header-actions">
-          <button className="add-company-btn" onClick={toggleModal}>Add company</button>
+          {/* ✅ HIDE ADD BUTTON FOR FINANCE/VIEWER */}
+          {canEdit && (
+            <button className="add-company-btn" onClick={toggleModal}>Add company</button>
+          )}
         </div>
       </div>
 
@@ -118,7 +125,7 @@ const Company = () => {
         <div className="search-container">
           <input 
             type="text" 
-            placeholder="Search by copany name, owner, or email..." 
+            placeholder="Search by company name, owner, or email..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -148,7 +155,8 @@ const Company = () => {
                 <th>Types</th>
                 <th>Email</th>
                 <th>Description</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                {/* ✅ HIDE ACTIONS HEADER */}
+                {canEdit && <th style={{ textAlign: 'center' }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -163,22 +171,26 @@ const Company = () => {
                     <td><span className="badge">{co.types || 'N/A'}</span></td>
                     <td>{co.email || '--'}</td>
                     <td className="text-truncate">{co.description || '--'}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button 
-                        onClick={() => handleDelete(co.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff4d4f' }}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
+                    
+                    {/* ✅ HIDE ACTIONS CELL */}
+                    {canEdit && (
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          onClick={() => handleDelete(co.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff4d4f' }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+                  <td colSpan={canEdit ? "7" : "6"} style={{ textAlign: 'center', padding: '20px' }}>
                     {searchQuery 
                       ? `No results found for "${searchQuery}"` 
-                      : "No companies found. Click 'Add company' to start."
+                      : "No companies found."
                     }
                   </td>
                 </tr>
@@ -188,7 +200,8 @@ const Company = () => {
         )}
       </div>
 
-      {isModalOpen && (
+      {/* ✅ GUARDED MODAL */}
+      {isModalOpen && canEdit && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
@@ -209,7 +222,6 @@ const Company = () => {
                     value={formData.name} onChange={handleInputChange} 
                   />
                 </div>
-
                 <div className="form-group">
                   <label>Company Owner</label>
                   <input 
@@ -218,7 +230,6 @@ const Company = () => {
                     value={formData.owner} onChange={handleInputChange} 
                   />
                 </div>
-
                 <div className="form-group">
                   <label>Email Address</label>
                   <input 
@@ -227,7 +238,6 @@ const Company = () => {
                     value={formData.email} onChange={handleInputChange} 
                   />
                 </div>
-
                 <div className="form-group">
                   <label>Type</label>
                   <select name="types" value={formData.types} onChange={handleInputChange}>
@@ -237,7 +247,6 @@ const Company = () => {
                   </select>
                 </div>
               </div>
-
               <div className="form-group full-width">
                 <label>Description</label>
                 <textarea 
@@ -246,7 +255,6 @@ const Company = () => {
                   value={formData.description} onChange={handleInputChange} 
                 />
               </div>
-
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={toggleModal}>Cancel</button>
                 <button type="submit" className="btn-primary">Create Company</button>
