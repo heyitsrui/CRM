@@ -82,14 +82,14 @@ const DashboardOverview = ({ stats, tasks }) => {
       {/* Status Stats Cards */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="icon-circle blue"><LayoutGrid size={20} /></div>
+          <div className="icon-circle yellow"><LayoutGrid size={20} /></div>
           <div>
             <h3>{stats?.leads || 0}</h3>
             <p>Projects in Lead</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle yellow"><FileText size={20} /></div>
+          <div className="icon-circle blue"><FileText size={20} /></div>
           <div>
             <h3>{stats?.bidding || 0}</h3>
             <p>Projects in Bidding</p>
