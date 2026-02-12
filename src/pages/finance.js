@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Edit, DollarSign, Wallet, CheckCircle, Clock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Edit, Search, X } from 'lucide-react';
 import axios from 'axios';
 import '../styles/finance.css'; // Ensure you have your styling here
 
@@ -8,6 +8,7 @@ const Finance = ({ loggedInUser }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [paidAmount, setPaidAmount] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 1. FLEXIBLE API URL: Works on PC and other devices automatically
   const API_BASE_URL = `http://${window.location.hostname}:5000`;
@@ -18,6 +19,17 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
   useEffect(() => {
     fetchFinanceData();
   }, []);
+
+  const filteredProjects = useMemo(() => {
+    const term = searchQuery.toLowerCase().trim();
+    if (!term) return projects;
+
+    return projects.filter((proj) =>
+      proj.deal_name?.toLowerCase().includes(term) ||
+      proj.company?.toLowerCase().includes(term) ||
+      proj.status?.toLowerCase().includes(term)
+    );
+  }, [searchQuery, projects]);
 
   const fetchFinanceData = async () => {
     try {
@@ -59,13 +71,31 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
 
   return (
     <div className="finance-page-container">
-      <div className="finance-header">
-        <h2>Financial Management</h2>
-        <p>Monitor project budgets, payments, and outstanding balances.</p>
+      <div className="view-header-tabs">
+        <div className="tab active">Financial Management</div>
       </div>
-
-      <div className="finance-table-wrapper">
-        <table className="finance-table">
+      <div className="toolbar">
+        <div className="search-container">
+          <input
+            type="text"
+            placeholder="     Search by project name, company, or status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery ? (
+            <X
+              size={18}
+              className="search-icon clear-icon"
+              onClick={() => setSearchQuery('')}
+              style={{ cursor: 'pointer' }}
+            />
+          ) : (
+            <Search size={18} className="search-icon" />
+          )}
+        </div>
+      </div>
+      <div className="table-container">
+        <table className="crm-table">
           <thead>
             <tr>
               <th>Project Name</th>
@@ -74,28 +104,37 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
               <th>Paid Amount</th>
               <th>Due Amount</th>
               <th>Status</th>
-              {/* 3. CONDITIONAL HEADER */}
-              {canManageFinance && <th>Actions</th>}
+              {canManageFinance && <th style={{ textAlign: 'center' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {projects.map((proj) => (
+            {filteredProjects.map((proj) => (
               <tr key={proj.id}>
-                <td className="font-bold">{proj.deal_name}</td>
-                <td>{proj.company}</td>
-                <td>${Number(proj.total_amount).toLocaleString()}</td>
-                <td className="text-green">${Number(proj.paid_amount).toLocaleString()}</td>
-                <td className="text-red">${Number(proj.due_amount).toLocaleString()}</td>
-                <td>
-                   <span className={`status-pill ${proj.status?.toLowerCase()}`}>
-                     {proj.status}
-                   </span>
+                <td className="company-name-cell">
+                  <span className="link-text">{proj.deal_name}</span>
                 </td>
-                {/* 4. CONDITIONAL CELL */}
+                <td>{proj.company || '--'}</td>
+                <td>${Number(proj.total_amount).toLocaleString()}</td>
+                <td>${Number(proj.paid_amount).toLocaleString()}</td>
+                <td>${Number(proj.due_amount).toLocaleString()}</td>
+                <td>
+                  <span className={`status-pill ${proj.status?.toLowerCase()}`}>
+                    {proj.status || 'N/A'}
+                  </span>
+                </td>
+
                 {canManageFinance && (
-                  <td>
-                    <button className="btn-update" onClick={() => handleOpenModal(proj)}>
-                      <Edit size={16} /> Update
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      className="delete-icon-btn"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => handleOpenModal(proj)}
+                    >
+                      <Edit size={18} />
                     </button>
                   </td>
                 )}
