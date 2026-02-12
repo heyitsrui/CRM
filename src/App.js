@@ -76,7 +76,7 @@ const LoginView = () => {
           className="login-card"
         >
           <h2 className="card-title">Get Started</h2>
-          <p className="card-welcome">Welcome to Visible Technology Intl Corp</p>
+          <p className="card-welcome">Welcome to Visible Technology International Corp.</p>
           <hr className="divider" />
 
           <AnimatePresence>
