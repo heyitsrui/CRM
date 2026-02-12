@@ -6,6 +6,8 @@ npm install nodemailer
 npm install axios
 npm install --save-dev @babel/preset-env @babel/preset-react
 
+npm install chart.js react-chartjs-2
+
 FOR OTP SET-UP
 cd backend
 npm init -y
