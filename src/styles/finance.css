@@ -7,14 +7,6 @@
 }
 
 /* Header & Tabs */
-.finance-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #f0f0f0;
-    margin-bottom: 25px;
-    padding-bottom: 10px;
-}
 
 .tabs {
     display: flex;
@@ -75,60 +67,7 @@
     color: #aaa;
 }
 
-/* Table Design Improvements */
-.finance-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.finance-table th {
-    text-align: left;
-    padding: 18px 15px;
-    background-color: #f4f7f7;
-    border-bottom: 2px solid #eee;
-    color: #555;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.5px;
-}
-
-.finance-table td {
-    padding: 16px 15px;
-    border-bottom: 1px solid #f2f2f2;
-    color: #444;
-    vertical-align: middle;
-}
-
 /* Special Cell Colors */
-.deal-name-cell {
-    color: #3ba3a3;
-    font-weight: 600;
-}
-
-.due-amount-cell {
-    color: #e74c3c;
-    font-weight: 700;
-    background-color: #fff5f4; /* Light highlight for overdue amounts */
-}
-
-/* Role-Based Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-}
-
-.icon-btn {
-    padding: 8px;
-    border: 1px solid #eee;
-    background: #fff;
-    border-radius: 8px; /* Slightly more modern than 50% circle */
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    transition: all 0.2s ease;
-}
 
 .icon-btn:hover {
     background-color: #f0f0f0;
@@ -195,5 +134,3 @@
     background: rgba(220, 53, 69, 0.12);
     color: #dc3545;
 }
-
-
