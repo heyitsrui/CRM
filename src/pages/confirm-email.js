@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -8,19 +8,59 @@ import bgVideo from "../assets/video/background.mp4";
 function ConfirmEmail() {
   const navigate = useNavigate();
 
-  const [otp, setOtp] = useState("");
+  // 1. Setup state for 6 individual digits
+  const [otp, setOtp] = useState(new Array(6).fill(""));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
+  // 2. Refs to control focus between boxes
+  const inputRefs = useRef([]);
+
   const email = localStorage.getItem("userEmail");
+
+  // Handle number input and auto-focus next
+  const handleChange = (element, index) => {
+    const value = element.value.replace(/[^a-zA-Z0-9]/g, "");
+    if (!value) return;
+
+    const newOtp = [...otp];
+    // Take only the last character entered
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+
+    // Move focus to next box if it exists
+    if (value && index < 5) {
+      inputRefs.current[index + 1].focus();
+    }
+  };
+
+  // Handle backspace to move focus back
+  const handleKeyDown = (e, index) => {
+    if (e.key === "Backspace") {
+      if (!otp[index] && index > 0) {
+        // If current box is empty, move back and clear previous
+        inputRefs.current[index - 1].focus();
+      }
+    }
+  };
+
+  // Handle paste (optional but helpful)
+  const handlePaste = (e) => {
+    const data = e.clipboardData.getData("text").slice(0, 6).split("");
+    if (data.length === 6) {
+      setOtp(data);
+      inputRefs.current[5].focus();
+    }
+  };
 
   /* ---------------- VERIFY OTP ---------------- */
   const handleConfirm = async (e) => {
     e.preventDefault();
+    const fullOtp = otp.join(""); // Merge array into one string
 
-    if (otp.length !== 6) {
-      setError("OTP must be 6 digits");
+    if (fullOtp.length !== 6) {
+      setError("Please enter all 6 digits");
       return;
     }
 
@@ -28,18 +68,39 @@ function ConfirmEmail() {
       setLoading(true);
       setError("");
 
-      const res = await axios.post("http://localhost:5000/verify-otp", {
+      // 1️⃣ Verify the OTP
+      const verifyRes = await axios.post("http://localhost:5000/verify-otp", {
         email,
-        otp,
+        otp: fullOtp,
       });
 
-      if (res.data.success) {
-        alert("✅ Email verified successfully!");
+      if (verifyRes.data.success) {
+        // 2️⃣ Retrieve the pending user data from localStorage
+        const savedData = JSON.parse(localStorage.getItem("pendingUserData"));
+
+        if (!savedData) {
+          setError("Registration session expired. Please go back.");
+          return;
+        }
+
+        // 3️⃣ Finally create the account in the database
+        await axios.post("http://localhost:5000/register", {
+          name: savedData.name,
+          email: savedData.email,
+          phone: savedData.phone,
+          password: savedData.password,
+          role: savedData.position
+        });
+
+        alert("✅ Account created and email verified successfully!");
+        
+        // 4️⃣ Cleanup and Redirect
         localStorage.removeItem("userEmail");
-        navigate("/"); // back to login
+        localStorage.removeItem("pendingUserData");
+        navigate("/"); 
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid OTP");
+      setError(err.response?.data?.message || "Invalid OTP or Registration failed");
     } finally {
       setLoading(false);
     }
@@ -50,7 +111,6 @@ function ConfirmEmail() {
     try {
       setResending(true);
       setError("");
-
       await axios.post("http://localhost:5000/send-otp", { email });
       alert("📩 New OTP sent to your email");
     } catch (err) {
@@ -62,7 +122,6 @@ function ConfirmEmail() {
 
   return (
     <div className="login-container">
-      {/* Background video */}
       <video autoPlay loop muted playsInline className="bg-video">
         <source src={bgVideo} type="video/mp4" />
       </video>
@@ -113,20 +172,25 @@ function ConfirmEmail() {
 
           <form onSubmit={handleConfirm} className="login-form">
             <div className="input-group">
-              <label>OTP</label>
-              <input
-                type="text"
-                placeholder="Enter 6 digit OTP"
-                value={otp}
-                maxLength={6}
-                onChange={(e) =>
-                    setOtp(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))
-                }
-                required
-              />
+              <label className="otp-label">OTP</label>
+              <div className="otp-input-container">
+                {otp.map((data, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    className="otp-box"
+                    maxLength="1"
+                    value={data}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    onChange={(e) => handleChange(e.target, index)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    required
+                  />
+                ))}
+              </div>
             </div>
 
-            {/* CONFIRM BUTTON */}
             <button
               type="submit"
               className="register-btn"
