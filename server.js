@@ -15,7 +15,7 @@
   const pool = mariadb.createPool({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
-    password: process.env.DB_PASS || "Charles@123",
+    password: process.env.DB_PASS || "ritzqt",
     database: process.env.DB_NAME || "crm",
     connectionLimit: 5,
   });
