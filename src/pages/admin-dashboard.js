@@ -169,7 +169,7 @@ export default function Dashboard() {
       case 2:
         return <Projects currentUser={loggedInUser} />;
       case 3: 
-        return <Finance loggedInUser={loggedInUser} />;
+        return <Finance loggedInUser={loggedInUser?.role} />;
       case 'clients':
         return <Client userRole={loggedInUser?.role} />;
       case 'company':
