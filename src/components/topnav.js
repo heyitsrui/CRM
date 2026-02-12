@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Lock, } from "lucide-react"; 
+import { User, Lock } from "lucide-react"; 
 
 const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Close dropdown when clicking outside
+  // The URL you want to use as a fallback
+  const DEFAULT_AVATAR = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -25,24 +27,24 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
     <header className="top-nav">
       <div className="user-block" ref={dropdownRef}>
         <div className="user-info" onClick={() => setIsOpen(!isOpen)} >
-          {/* Dynamically reflects name from profile update */}
           <span className="user-name" style={{ fontSize: "20px", fontFamily: "Poppins", display: "block" }}>
-            {loggedInUser?.name || "User"}</span>
+            {loggedInUser?.name || "User"}
+          </span>
           <span className="user-email">{loggedInUser?.email}</span>
         </div>
         
         <div className="user-avatar" onClick={() => setIsOpen(!isOpen)}>
           <img 
             src={
-              loggedInUser?.avatar && loggedInUser.avatar.includes("data:image")
+              loggedInUser?.avatar && (loggedInUser.avatar.includes("data:image") || loggedInUser.avatar.startsWith("http"))
                 ? loggedInUser.avatar 
-                : "/default-avatar.png"
+                : DEFAULT_AVATAR // Updated default
             }
             alt="User" 
             className="user-avatar-img"
             onError={(e) => {
               e.target.onerror = null; 
-              e.target.src = "/default-avatar.png";
+              e.target.src = DEFAULT_AVATAR; // Updated fallback if URL breaks
             }}
           />
         </div>
