@@ -1,6 +1,9 @@
+/* Container Padding and Base Style */
 .finance-container {
-    padding: 20px;
-    background-color: #fff;
+    padding: 25px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 /* Header & Tabs */
@@ -8,13 +11,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #e0e0e0;
-    margin-bottom: 20px;
+    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 25px;
+    padding-bottom: 10px;
 }
 
 .tabs {
     display: flex;
-    gap: 0;
+    gap: 10px;
 }
 
 .tab {
@@ -23,7 +27,8 @@
     background: none;
     cursor: pointer;
     font-weight: 600;
-    color: #444;
+    color: #888;
+    transition: all 0.3s ease;
 }
 
 .tab.active {
@@ -36,52 +41,66 @@
     color: white;
     border: none;
     padding: 10px 20px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-weight: bold;
     cursor: pointer;
+    transition: background 0.3s;
 }
 
-/* Search Bar */
+.add-client-btn:hover {
+    background-color: #2e8282;
+}
+
+/* Search Bar Styling */
 .search-bar-container {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    max-width: 400px; /* Constrain search bar width */
 }
 
 .search-bar-container input {
     width: 100%;
     padding: 12px 15px 12px 45px;
-    border: 1px solid #ddd;
-    border-radius: 25px;
+    border: 1px solid #e0e0e0;
+    border-radius: 50px;
     font-size: 14px;
+    background-color: #f9f9f9;
 }
 
 .search-icon {
     position: absolute;
-    left: 15px;
+    left: 18px;
     top: 50%;
     transform: translateY(-50%);
-    color: #999;
+    color: #aaa;
 }
 
-/* Table Styles */
+/* Table Design Improvements */
 .finance-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 .finance-table th {
     text-align: left;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #eee;
-    color: #333;
+    padding: 18px 15px;
+    background-color: #f4f7f7;
+    border-bottom: 2px solid #eee;
+    color: #555;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
 }
 
 .finance-table td {
-    padding: 15px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 16px 15px;
+    border-bottom: 1px solid #f2f2f2;
+    color: #444;
+    vertical-align: middle;
 }
 
+/* Special Cell Colors */
 .deal-name-cell {
     color: #3ba3a3;
     font-weight: 600;
@@ -89,39 +108,92 @@
 
 .due-amount-cell {
     color: #e74c3c;
-    font-weight: bold;
+    font-weight: 700;
+    background-color: #fff5f4; /* Light highlight for overdue amounts */
 }
 
-/* Actions */
+/* Role-Based Action Buttons */
 .action-buttons {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     justify-content: center;
 }
 
 .icon-btn {
-    padding: 6px;
-    border: 1px solid #ddd;
+    padding: 8px;
+    border: 1px solid #eee;
     background: #fff;
-    border-radius: 50%;
+    border-radius: 8px; /* Slightly more modern than 50% circle */
     cursor: pointer;
     display: flex;
     align-items: center;
+    transition: all 0.2s ease;
 }
 
-.icon-btn.approve.active {
-    background-color: #2ecc71;
+.icon-btn:hover {
+    background-color: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.icon-btn.save { 
+    color: #27ae60; 
+    border-color: #27ae60; 
+}
+.icon-btn.save:hover {
+    background-color: #27ae60;
     color: white;
-    border-color: #2ecc71;
 }
 
+.icon-btn.cancel { 
+    color: #e74c3c; 
+    border-color: #e74c3c; 
+}
+.icon-btn.cancel:hover {
+    background-color: #e74c3c;
+    color: white;
+}
+
+/* Input for Inline Editing */
 .finance-table input[type="number"] {
-    width: 100px;
-    padding: 5px;
-    border: 1px solid #3ba3a3;
-    border-radius: 4px;
+    width: 110px;
+    padding: 6px 10px;
+    border: 2px solid #3ba3a3;
+    border-radius: 6px;
+    font-weight: 600;
     outline: none;
+    box-shadow: 0 0 5px rgba(59, 163, 163, 0.2);
 }
 
-.icon-btn.save { color: #2ecc71; border-color: #2ecc71; }
-.icon-btn.cancel { color: #e74c3c; border-color: #e74c3c; }
+/* Status Pill Helper (Optional) */
+/* Finance Status Colors */
+.status-pill.lead {
+    background: rgba(243, 156, 18, 0.12);
+    color: #f39c12;
+}
+
+.status-pill.bidding {
+    background: rgba(52, 152, 219, 0.12);
+    color: #3498db;
+}
+
+.status-pill.signature {
+    background: rgba(46, 204, 113, 0.12);
+    color: #2ecc71;
+}
+
+.status-pill.hold {
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+}
+
+.status-pill.approved {
+    background: rgba(26, 188, 156, 0.12);
+    color: #1abc9c;
+}
+
+.status-pill.expired {
+    background: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+}
+
+
