@@ -1,132 +1,137 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, CheckCircle2, Search, Save, X } from 'lucide-react';
+import { Edit, DollarSign, Wallet, CheckCircle, Clock } from 'lucide-react';
 import axios from 'axios';
-import '../styles/finance.css';
+import '../styles/finance.css'; // Ensure you have your styling here
 
-const Finance = () => {
+const Finance = ({ loggedInUser }) => {
   const [projects, setProjects] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  
-  // Now only tracking paid_amount since Total is read-only here
-  const [editForm, setEditForm] = useState({ paid_amount: 0 });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [paidAmount, setPaidAmount] = useState('');
 
-  useEffect(() => { fetchFinanceData(); }, []);
+  // 1. FLEXIBLE API URL: Works on PC and other devices automatically
+  const API_BASE_URL = `http://${window.location.hostname}:5000`;
+
+  // 2. ROLE CHECK: Only Admin and Finance can see Action buttons
+const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
+
+  useEffect(() => {
+    fetchFinanceData();
+  }, []);
 
   const fetchFinanceData = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/finance/projects');
-      if (res.data.success) setProjects(res.data.projects);
-    } catch (err) { console.error("Fetch error:", err); }
+      const res = await axios.get(`${API_BASE_URL}/api/finance/projects`);
+      if (res.data.success) {
+        setProjects(res.data.projects);
+      }
+    } catch (err) {
+      console.error("Error fetching finance data:", err);
+    }
   };
 
-    const handleSave = async (id) => {
-    try {
-        // Ensure we are sending a number, not a string from the input
-        const payload = {
-        paid_amount: parseFloat(editForm.paid_amount) || 0
-        };
+  const handleOpenModal = (project) => {
+    setSelectedProject(project);
+    setPaidAmount(project.paid_amount); // Pre-fill with existing paid amount
+    setIsModalOpen(true);
+  };
 
-        const res = await axios.put(`http://localhost:5000/api/finance/update/${id}`, payload);
-        
-        if (res.data.success) {
-        setEditingId(null);
-        // Refresh the table to show the new calculated Due Amount from the server
-        fetchFinanceData(); 
-        }
+  const handleUpdatePayment = async (e) => {
+    e.preventDefault();
+    if (!selectedProject) return;
+
+    try {
+      const res = await axios.put(`${API_BASE_URL}/api/finance/update/${selectedProject.id}`, {
+        paid_amount: paidAmount,
+        role: loggedInUser?.role // Send role to backend for security verification
+      });
+
+      if (res.data.success) {
+        alert(`Payment Updated! New Balance: $${res.data.balance}`);
+        setIsModalOpen(false);
+        fetchFinanceData(); // Refresh table
+      }
     } catch (err) {
-        console.error("Save Error:", err);
-        alert("Save failed. Check if the server is running.");
+      console.error("Update error:", err.response?.data || err.message);
+      alert("Failed to update finance record.");
     }
-    };
+  };
 
   return (
-    <div className="finance-container">
-      <div className="search-bar-container">
-        <Search className="search-icon" size={18} />
-        <input 
-          type="text" 
-          placeholder="Search deal, company, or owner..." 
-          onChange={(e) => setSearchTerm(e.target.value)} 
-        />
+    <div className="finance-page-container">
+      <div className="finance-header">
+        <h2>Financial Management</h2>
+        <p>Monitor project budgets, payments, and outstanding balances.</p>
       </div>
 
-      <table className="finance-table">
-        <thead>
-          <tr>
-            <th>Deal Name</th>
-            <th>Company</th>
-            <th>Total Amount</th>
-            <th>Paid Amount</th>
-            <th>Due Amount (Balance)</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projects
-            .filter(p => p.deal_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-            .map((p) => {
-              const totalContract = parseFloat(p.total_amount) || 0;
-              const currentPaidInput = editingId === p.id ? (parseFloat(editForm.paid_amount) || 0) : (parseFloat(p.paid_amount) || 0);
-              const liveDue = totalContract - currentPaidInput;
-
-              return (
-                <tr key={p.id}>
-                  <td>{p.deal_name}</td>
-                  <td>{p.company}</td>
-                  
-                  {/* Total Amount: Now strictly Read-Only */}
-                  <td className="readonly-total_amount">
-                    ₱{totalContract.toLocaleString()}
-                  </td>
-
-                  {/* Paid Amount: Editable */}
+      <div className="finance-table-wrapper">
+        <table className="finance-table">
+          <thead>
+            <tr>
+              <th>Project Name</th>
+              <th>Company</th>
+              <th>Total Contract</th>
+              <th>Paid Amount</th>
+              <th>Due Amount</th>
+              <th>Status</th>
+              {/* 3. CONDITIONAL HEADER */}
+              {canManageFinance && <th>Actions</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {projects.map((proj) => (
+              <tr key={proj.id}>
+                <td className="font-bold">{proj.deal_name}</td>
+                <td>{proj.company}</td>
+                <td>${Number(proj.total_amount).toLocaleString()}</td>
+                <td className="text-green">${Number(proj.paid_amount).toLocaleString()}</td>
+                <td className="text-red">${Number(proj.due_amount).toLocaleString()}</td>
+                <td>
+                   <span className={`status-pill ${proj.status?.toLowerCase()}`}>
+                     {proj.status}
+                   </span>
+                </td>
+                {/* 4. CONDITIONAL CELL */}
+                {canManageFinance && (
                   <td>
-                    {editingId === p.id ? (
-                      <input 
-                        type="number" 
-                        autoFocus
-                        value={editForm.paid_amount} 
-                        onChange={(e) => setEditForm({ paid_amount: e.target.value })} 
-                      />
-                    ) : `₱${(parseFloat(p.paid_amount) || 0).toLocaleString()}`}
+                    <button className="btn-update" onClick={() => handleOpenModal(proj)}>
+                      <Edit size={16} /> Update
+                    </button>
                   </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-                  {/* Due Amount: Automatic Calculation */}
-                  <td>
-                    <span style={{ 
-                      color: liveDue > 0 ? '#ef4444' : '#22c55e', 
-                      fontWeight: 'bold' 
-                    }}>
-                      ₱{liveDue.toLocaleString()}
-                    </span>
-                  </td>
-                  
-                  <td className="actions-cell">
-                    <div className="action-buttons">
-                      {editingId === p.id ? (
-                        <>
-                          <button onClick={() => handleSave(p.id)} className="icon-btn save"><Save size={16} /></button>
-                          <button onClick={() => setEditingId(null)} className="icon-btn cancel"><X size={16} /></button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => {
-                            setEditingId(p.id);
-                            setEditForm({ paid_amount: p.paid_amount });
-                          }} className="icon-btn edit"><Pencil size={16} /></button>
-                          <button className={`icon-btn approve ${p.status === 'Approved' ? 'active' : ''}`}>
-                            <CheckCircle2 size={16} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-        </tbody>
-      </table>
+      {/* UPDATE MODAL */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-body">
+            <h3>Update Payment</h3>
+            <p className="modal-subtitle">Project: {selectedProject?.deal_name}</p>
+            
+            <form onSubmit={handleUpdatePayment}>
+              <div className="form-group">
+                <label>Total Contract: ${selectedProject?.total_amount}</label>
+                <input 
+                  type="number" 
+                  placeholder="Enter New Paid Amount"
+                  value={paidAmount}
+                  onChange={(e) => setPaidAmount(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="modal-footer">
+                <button type="button" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-save">Update Record</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
