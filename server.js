@@ -46,15 +46,50 @@
     },
   });
 
-  // ================= SEND OTP =================
+    // ================= SEND OTP =================
   app.post("/send-otp", async (req, res) => {
     try {
-      const { email } = req.body;
-      const users = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-      if (!users || users.length === 0)
-        return res.json({ success: false, message: "Email is not registered" });
+      // We extract type, but we give it a default value of 'signup' 
+      // if the frontend forgot to send it.
+      let { email, type } = req.body;
+      if (!type) type = 'signup'; 
 
-      const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
+      // 1. Check if user exists
+      const existingUser = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
+      const userExists = existingUser.length > 0;
+
+      // 2. Logic for Resetting Password (Email MUST exist in DB)
+      if (type === 'reset') {
+        if (!userExists) {
+          return res.status(404).json({ 
+            success: false, 
+            message: "Email not found. Please register first." 
+          });
+        }
+      } 
+      // 3. Logic for New Registration (Email MUST NOT exist in DB)
+      else if (type === 'signup') {
+        if (userExists) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "Email already registered. Please login instead." 
+          });
+        }
+      } 
+      // 4. Safety check for any other misspelled types
+      else {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid request type. Use 'signup' or 'reset'." 
+        });
+      }
+
+      // --- OTP Generation and Sending Logic ---
+      const otp = otpGenerator.generate(6, { 
+        upperCaseAlphabets: false, 
+        specialChars: false, 
+        lowerCaseAlphabets: false 
+      });
 
       await queryDB(
         `INSERT INTO otp_table (email, otp, expires_at)
@@ -72,7 +107,7 @@
 
       res.json({ success: true, message: "OTP sent" });
     } catch (err) {
-      console.error(err);
+      console.error("OTP Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
