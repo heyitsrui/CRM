@@ -191,15 +191,28 @@
   margin-bottom: 10px;
 }
 
+.password-stack input:last-child {
+  margin-top: 5px;
+}
+
 .eye-btn {
   position: absolute;
-  right: 20px;
-  top: 50%;
+  right: 15px;
+  top: 40%; /* Adjusted because of your 15px margin-bottom on inputs */
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  color: #555;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  transition: color 0.2s;
+}
+
+.eye-btn:hover {
+  color: #000;
 }
 
 .forgot-container {
@@ -310,5 +323,62 @@
   }
   .header-nav {
     padding: 20px;
+  }
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 50px; /* Make space for the icon */
+}
+
+/* OTP Container Styles */
+.otp-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+  color: #1a1a1a;
+}
+
+.otp-input-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.otp-box {
+  width: 60px;
+  height: 65px;
+  border: none;
+  background-color: #f2f2f2;
+  border-radius: 16px;  
+  text-align: center;
+  font-size: 2.2rem;    
+  font-weight: 700;     
+  color: #000;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.otp-box:focus {
+  background-color: #e8e8e8;
+  box-shadow: 0 0 0 2px #000; /* Subtle ring on focus */
+}
+
+/* Ensure responsiveness for smaller screens */
+@media (max-width: 480px) {
+  .otp-box {
+    width: 45px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  .otp-input-container {
+    gap: 5px;
   }
 }
