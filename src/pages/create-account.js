@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react'; // Import icons
 import '../styles/create-account.css';
 import bgVideo from '../assets/video/background.mp4';
 import axios from "axios";
@@ -15,8 +16,13 @@ function CreateAccount() {
     confirmPassword: ''
   });
 
+  const [showPassword, setShowPassword] = useState(false); // New state
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -25,7 +31,6 @@ function CreateAccount() {
 
   const validate = () => {
     const { phone, password, confirmPassword } = formData;
-
     const passwordRegex = /^(?=.*[0-9]).{8,}$/;
     const phoneRegex = /^[0-9+]{10,15}$/;
 
@@ -33,17 +38,14 @@ function CreateAccount() {
       setError("Please enter a valid phone number.");
       return false;
     }
-
     if (!passwordRegex.test(password)) {
       setError("Password must be at least 8 characters and include a number.");
       return false;
     }
-
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return false;
     }
-
     return true;
   };
 
@@ -52,28 +54,15 @@ function CreateAccount() {
     if (!validate()) return;
 
     try {
-      // 1️⃣ Send OTP
       await axios.post("http://localhost:5000/send-otp", {
         email: formData.email,
+        type: 'signup'
       });
-
-      // 2️⃣ Register user
-      await axios.post("http://localhost:5000/register", {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        role: formData.position
-      });
-
-      // 3️⃣ Save email for OTP confirmation
+      localStorage.setItem("pendingUserData", JSON.stringify(formData));
       localStorage.setItem("userEmail", formData.email);
-
-      // 4️⃣ Go to confirm page
       navigate("/confirm-email");
-
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to register. Please try again.");
+      setError(err.response?.data?.message || "Failed to send OTP. Please try again.");
     }
   };
 
@@ -111,7 +100,6 @@ function CreateAccount() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className="error-bubble"
-                style={{ color: 'red', marginBottom: '10px', textAlign: 'center' }}
               >
                 {error}
               </motion.div>
@@ -119,15 +107,10 @@ function CreateAccount() {
           </AnimatePresence>
 
           <form onSubmit={handleRegister} className="login-form">
+            {/* Position, Name, Email, and Phone fields remain the same... */}
             <div className="input-group">
               <label>Select Position</label>
-              <select
-                name="position"
-                value={formData.position}
-                onChange={handleChange}
-                required
-                className="custom-select"
-              >
+              <select name="position" value={formData.position} onChange={handleChange} required className="custom-select">
                 <option value="" disabled>Select your position here</option>
                 <option value="admin">System Administrator</option>
                 <option value="manager">Sales Manager</option>
@@ -139,51 +122,42 @@ function CreateAccount() {
 
             <div className="input-group">
               <label>Name</label>
-              <input
-                name="name"
-                type="text"
-                placeholder="Input your fullname"
-                onChange={handleChange}
-                required
-              />
+              <input name="name" type="text" placeholder="Input your fullname" onChange={handleChange} required />
             </div>
 
             <div className="input-group">
               <label>Email</label>
-              <input
-                name="email"
-                type="email"
-                placeholder="Input your email"
-                onChange={handleChange}
-                required
-              />
+              <input name="email" type="email" placeholder="Input your email" onChange={handleChange} required />
             </div>
 
             <div className="input-group">
               <label>Phone Number</label>
-              <input
-                name="phone"
-                type="tel"
-                placeholder="e.g. 09XXXXXXXXX"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-              />
+              <input name="phone" type="tel" placeholder="e.g. 09XXXXXXXXX" value={formData.phone} onChange={handleChange} required />
             </div>
 
             <div className="input-group">
               <label>Password</label>
               <div className="password-stack">
-                <input
-                  name="password"
-                  type="password"
-                  placeholder="8+ characters with numbers"
-                  onChange={handleChange}
-                  required
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="8+ characters with numbers"
+                    onChange={handleChange}
+                    required
+                  />
+                  <button 
+                    type="button" 
+                    className="eye-btn" 
+                    onClick={togglePasswordVisibility}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                
                 <input
                   name="confirmPassword"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Confirm password"
                   onChange={handleChange}
                   required
