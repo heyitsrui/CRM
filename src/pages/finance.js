@@ -43,7 +43,7 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
     try {
       const res = await axios.put(`${API_BASE_URL}/api/finance/update/${selectedProject.id}`, {
         paid_amount: paidAmount,
-        role: loggedInUser?.role // Send role to backend for security verification
+        role: loggedInUser // Send role to backend for security verification
       });
 
       if (res.data.success) {
