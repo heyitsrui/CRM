@@ -132,7 +132,7 @@ export default function UserManagement({ currentUser }) {
         <div className="search-container">
           <input 
             type="text" 
-            placeholder="      Search by name, email, or role..." 
+            placeholder="Search by name, email, or role..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
