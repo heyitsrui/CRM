@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Edit, Search, X } from 'lucide-react';
 import axios from 'axios';
-import '../styles/finance.css'; // Ensure you have your styling here
+import '../styles/dashboard.css'; // Ensure you have your styling here
 
 const Finance = ({ loggedInUser }) => {
   const [projects, setProjects] = useState([]);
@@ -78,7 +78,7 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
         <div className="search-container">
           <input
             type="text"
-            placeholder="     Search by project name, company, or status..."
+            placeholder="Search by project name, company, or status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
