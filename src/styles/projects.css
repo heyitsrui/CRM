@@ -2,7 +2,7 @@
 /* This ensures NO style in this file touches the Login or other pages */
 
 .projects-page-wrapper {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Poppins';
   color: #333;
   background-color: #f4f7f6;
   min-height: 100vh;
