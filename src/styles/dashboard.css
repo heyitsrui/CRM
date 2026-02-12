@@ -273,6 +273,7 @@ body {
   height: calc(100vh - 70px);
 }
 
+
 /* ===============================
    STATS GRID
 =============================== */
@@ -294,7 +295,14 @@ body {
   align-items: center;
   gap: 15px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  transition: all 0.3s ease;
 }
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
 
 .icon-circle {
   width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -335,11 +343,19 @@ body {
   align-items: center;
   gap: 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
+
+.money-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.08);
+}
+
 
 /* ===============================
    ACTIVITY + CHART
 =============================== */
+
 .bottom-sections {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
@@ -355,6 +371,11 @@ body {
   box-shadow: 0 2px 10px rgba(0,0,0,0.03);
   display: flex;
   flex-direction: column;
+}
+
+.chart-box:hover {
+  transform: translateY(-5px); 
+  box-shadow: 0 12px 25px rgba(0,0,0,0.08);
 }
 
 .chart-box h3 {
@@ -375,6 +396,10 @@ body {
   padding: 25px;
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+.activity-box:hover {
+  transform: translateY(-5px); 
+  box-shadow: 0 12px 25px rgba(0,0,0,0.08);
 }
 
 .chevron-icon {
@@ -713,3 +738,4 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
