@@ -635,10 +635,14 @@
   });
 
   // UPDATE Finance record (Calculates Due Amount automatically)
-  app.put("/api/finance/update/:id", async (req, res) => {
+app.put("/api/finance/update/:id", async (req, res) => {
     const { id } = req.params;
-    const { paid_amount } = req.body; 
+    const { paid_amount, role } = req.body; // Pass the role from the frontend
 
+    // Server-side role check
+    if (role !== 'admin' && role !== 'finance') {
+        return res.status(403).json({ success: false, message: "Unauthorized access" });
+    }
     try {
       // 1. Fetch total_amount from DB (Matching your HeidiSQL schema)
       const rows = await queryDB("SELECT total_amount FROM projects WHERE id = ?", [id]);
