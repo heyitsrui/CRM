@@ -67,42 +67,6 @@
     color: #aaa;
 }
 
-/* Special Cell Colors */
-
-.icon-btn:hover {
-    background-color: #f0f0f0;
-    transform: translateY(-1px);
-}
-
-.icon-btn.save { 
-    color: #27ae60; 
-    border-color: #27ae60; 
-}
-.icon-btn.save:hover {
-    background-color: #27ae60;
-    color: white;
-}
-
-.icon-btn.cancel { 
-    color: #e74c3c; 
-    border-color: #e74c3c; 
-}
-.icon-btn.cancel:hover {
-    background-color: #e74c3c;
-    color: white;
-}
-
-/* Input for Inline Editing */
-.finance-table input[type="number"] {
-    width: 110px;
-    padding: 6px 10px;
-    border: 2px solid #3ba3a3;
-    border-radius: 6px;
-    font-weight: 600;
-    outline: none;
-    box-shadow: 0 0 5px rgba(59, 163, 163, 0.2);
-}
-
 /* Status Pill Helper (Optional) */
 /* Finance Status Colors */
 .status-pill.lead {
