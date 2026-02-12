@@ -5,11 +5,9 @@
   font-family: 'Poppins';
   color: #333;
   background-color: #f4f7f6;
-  min-height: 100vh;
 }
 
 .projects-page-wrapper .projects-container {
-  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
 }
