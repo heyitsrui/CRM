@@ -125,7 +125,7 @@ const Company = ({ userRole }) => {
         <div className="search-container">
           <input 
             type="text" 
-            placeholder="     Search by company name, owner, or email..." 
+            placeholder="Search by company name, owner, or email..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
