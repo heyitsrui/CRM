@@ -274,7 +274,7 @@
 
   app.put("/api/users/:id/profile", async (req, res) => {
     const { id } = req.params;
-    const { name, phone, about, avatar } = req.body; 
+    const { name, email, phone, role, about, avatar } = req.body;
     if (avatar && avatar.length > 7_000_000) {
       return res.status(400).json({
         success: false,
@@ -283,8 +283,8 @@
     }
     try {
       await queryDB(
-        "UPDATE users SET name=?, phone=?, about=?, avatar=? WHERE id=?",
-        [name, phone, about, avatar, id]
+        "UPDATE users SET name=?, email=?, phone=?, role=?, about=?, avatar=? WHERE id=?",
+        [name, email, phone, role, about, avatar, id]
       );
       const updatedUser = await queryDB(
         "SELECT id, name, email, phone, role, about, avatar FROM users WHERE id=?",
@@ -292,6 +292,7 @@
       );
       res.json({ success: true, user: updatedUser[0] });
     } catch (err) {
+      console.error("Update Error:", err.message);
       res.status(500).json({ success: false, message: err.message });
     }
   });
