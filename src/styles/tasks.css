@@ -182,7 +182,7 @@
 .card-content p {
   color: #64748b;
   font-size: 0.9rem;
-  line-height: 1.5;
+  line-height: 1.5  ;
   margin: 0;
 }
 
@@ -372,7 +372,7 @@
 }
 
 .btn-assign {
-  background: #6366f1;
+  background: #007bff;
   color: white;
   padding: 8px 16px;
   border-radius: 8px;
