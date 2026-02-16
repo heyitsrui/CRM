@@ -42,6 +42,11 @@
   font-family: 'Poppins';
   font-weight: bold;
 }
+
+.create-btn:hover{
+  background: #000080;
+  color: #f8f9fa;
+}
 /* KANBAN LAYOUT */
 .kanban-wrapper {
   overflow-x: auto;
@@ -298,7 +303,7 @@
 }
 
 .save-btn {
-  background: #28a745;
+  background: #007bff;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -306,6 +311,11 @@
   font-weight: 600;
   cursor: pointer;
   font-family: 'Poppins';
+}
+
+.save-btn:hover{
+  background: #000080;
+  color: #f8f9fa;
 }
 
 .cancel-btn {
@@ -316,6 +326,11 @@
   border-radius: 6px;
   cursor: pointer;
   font-family: 'Poppins';
+}
+
+.cancel-btn:hover{
+  background: #999da0;
+  color: #f8f9fa;
 }
 
 .save-btn:disabled {
