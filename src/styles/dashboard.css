@@ -120,7 +120,7 @@ body {
 }
 
 .nav-item.active {
-  background-color: var(--brand-teal);
+  background-color: #007bff;
   color: white;
 }
 
@@ -495,7 +495,7 @@ body {
 }
 
 .tab.active {
-  border-bottom: 3px solid #3ba3a5; /* HubSpot Orange */
+  border-bottom: 3px solid #007bff; /* HubSpot Orange */
   font-weight: 600;
 }
 
@@ -558,7 +558,7 @@ body {
 }
 
 .link-text {
-  color: #00778b;
+  color: #007bff;
   font-weight: 600;
   cursor: pointer;
 }
@@ -567,7 +567,7 @@ body {
    ADD USER / COMPANY BUTTON
 =============================== */
 .add-company-btn {
-  background-color: #3ba3a5; /* The teal color from your image */
+  background-color: #007bff; /* The teal color from your image */
   color: #ffffff;            /* White text */
   padding: 8px 20px;       /* Vertical and horizontal padding */
   border: none;             /* Remove default border */
