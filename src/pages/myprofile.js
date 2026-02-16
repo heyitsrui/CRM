@@ -47,6 +47,10 @@ const MyProfile = ({ user, onProfileUpdate }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+        alert("File is too large! Please choose an image under 5MB.");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileData((prev) => ({ ...prev, avatar: reader.result }));
@@ -65,6 +69,8 @@ const MyProfile = ({ user, onProfileUpdate }) => {
           phone: profileData.phone,
           about: profileData.about,
           avatar: profileData.avatar,
+          email: user.email,
+          role: user.role,
         }
       );
 
