@@ -256,7 +256,10 @@ export default function Dashboard() {
       case 'company':
         return <Company userRole={loggedInUser?.role} />;
       case 4:
-        return <Tasks loggedInUser={loggedInUser} />
+      case 'my task':
+        return <Tasks loggedInUser={loggedInUser} />;
+      case 'time tree':
+        return <div className="p-4"><h2>Time Tree View</h2><p>Coming Soon...</p></div>;
       case 6:
         if (loggedInUser?.role === 'admin') {
           return <UserManagement currentUser={loggedInUser} />;
