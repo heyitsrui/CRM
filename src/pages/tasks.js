@@ -5,13 +5,15 @@ import {
   CheckCircle, 
   LayoutGrid, 
   CheckSquare, 
-  Trophy, 
   UserPlus, 
   User,
   Clock
 } from 'lucide-react';
 import axios from 'axios';
 import '../styles/tasks.css';
+
+// ✅ Import the notification service
+import { sendNotification } from "../utils/notifService";
 
 const API_BASE_URL = `http://${window.location.hostname}:5000`;
 
@@ -60,6 +62,13 @@ const Tasks = ({ loggedInUser }) => {
     const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
     try {
       await axios.put(`${API_BASE_URL}/api/tasks/${task.id}/status`, { status: newStatus });
+      
+      // ✅ Notify when a task is completed/reopened
+      const message = newStatus === 'Completed' 
+        ? `✅ Task Completed: ${task.title}` 
+        : `⏳ Task Reopened: ${task.title}`;
+      sendNotification(message);
+
       fetchData();
     } catch (err) {
       console.error("Update failed:", err);
@@ -70,9 +79,7 @@ const Tasks = ({ loggedInUser }) => {
     e.preventDefault();
     if (!loggedInUser?.id) return alert("Session expired.");
 
-    // ✅ DEBUG: Check this in your browser console (F12) to see who is being assigned
     const targetUserId = (isAdminOrManager && formData.assigned_to) ? formData.assigned_to : loggedInUser.id;
-    console.log("Saving task for User ID:", targetUserId);
 
     try {
       const payload = {
@@ -84,8 +91,18 @@ const Tasks = ({ loggedInUser }) => {
 
       if (editingTask) {
         await axios.put(`${API_BASE_URL}/api/tasks/${editingTask.id}`, payload);
+        // ✅ Notify on Update
+        sendNotification(`📝 Updated task: ${formData.title}`);
       } else {
         await axios.post(`${API_BASE_URL}/api/tasks`, payload);
+        
+        // ✅ Notify on Assignment
+        if (isAdminOrManager && parseInt(targetUserId) !== parseInt(loggedInUser.id)) {
+            const assignedUser = users.find(u => parseInt(u.id) === parseInt(targetUserId));
+            sendNotification(`📤 Assigned "${formData.title}" to ${assignedUser?.name || 'Employee'}`);
+        } else {
+            sendNotification(`🆕 New task created: ${formData.title}`);
+        }
       }
       closeModal();
       fetchData();
