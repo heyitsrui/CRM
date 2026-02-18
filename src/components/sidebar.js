@@ -30,7 +30,8 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
     { 
       label: 'Tasks', 
       icon: <Landmark size={20} />, 
-      subItems: ['View all Task', 'In Progress', 'Completed'] 
+      isDropdown: true,
+      subItems: ['My Task', 'Time Tree'] 
     },
     { 
       label: 'Contacts', 
