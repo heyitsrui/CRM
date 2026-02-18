@@ -87,7 +87,7 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
                   <button 
                     key={subIdx}
                     onClick={() => setActiveIndex(sub.toLowerCase())}
-                    className={`sub-nav-item ${sub === 'View all Task' || sub === 'Project View' ? 'sub-active' : ''}`}
+                    className={`sub-nav-item ${activeIndex === sub.toLowerCase() ? 'sub-active' : ''}`}
                   >
                     {sub}
                   </button>
