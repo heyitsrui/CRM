@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "../styles/proposal.css";
+import { sendNotification } from "../utils/notifService";
+
 
 const Proposal = ({ currentUser }) => {
   const [projects, setProjects] = useState([]);
@@ -42,18 +44,19 @@ const Proposal = ({ currentUser }) => {
     }
   };
 
-  const submitDeal = async () => {
-    if (!canEdit) return; // Security guard
+ const submitDeal = async () => {
+    if (!canEdit) return; 
     if (!form.deal_name) return alert("Deal name required");
 
     try {
       if (editing) {
-        await axios.put(
-          `http://localhost:5000/api/projects/${editing.id}`,
-          form
-        );
+        await axios.put(`http://localhost:5000/api/projects/${editing.id}`, form);
+        // ✅ Notification for Update
+        sendNotification(`📝 Updated deal: ${form.deal_name}`);
       } else {
         await axios.post("http://localhost:5000/api/projects", form);
+        // ✅ Notification for Creation
+        sendNotification(`🚀 New deal created: ${form.deal_name}`);
       }
 
       setShowModal(false);
@@ -66,12 +69,14 @@ const Proposal = ({ currentUser }) => {
   };
 
   const updateStatus = async (id, status) => {
-    if (!canEdit) return; // Security guard
+    if (!canEdit) return;
     try {
-      await axios.put(
-        `http://localhost:5000/api/projects/${id}/status`,
-        { status }
-      );
+      const project = projects.find(p => p.id === id);
+      await axios.put(`http://localhost:5000/api/projects/${id}/status`, { status });
+      
+      // ✅ Notification for Status Change (Drag & Drop or Menu)
+      sendNotification(`🔄 Deal "${project?.deal_name}" moved to ${status}`);
+      
       fetchProjects();
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -79,10 +84,13 @@ const Proposal = ({ currentUser }) => {
   };
 
   const deleteDeal = async (id) => {
-    if (!canEdit) return; // Security guard
+    if (!canEdit) return;
+    const project = projects.find(p => p.id === id);
     if (!window.confirm("Delete this deal?")) return;
     try {
       await axios.delete(`http://localhost:5000/api/projects/${id}`);
+      // ✅ Notification for Deletion
+      sendNotification(`🗑️ Deleted deal: ${project?.deal_name}`);
       fetchProjects();
     } catch (err) {
       console.error("Failed to delete deal:", err);
