@@ -126,16 +126,12 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
           </div>
 
           {isProfileOpen && (
-            <div className="profile-dropdown" style={{ ...styles.dropdown, right: 0, width: "180px", top: "55px" }}>
+            <div className="profile-dropdown" style={{ ...styles.dropdown, right: 0, width: "200px", top: "55px" }}>
               <button className="dropdown-item" onClick={() => { if (onNavigate) onNavigate(99); setIsProfileOpen(false); }} style={styles.dropItem}>
                 <User size={18} /> <span>My Profile</span>
               </button>
               <button className="dropdown-item" onClick={() => { if (onNavigate) onNavigate(100); setIsProfileOpen(false); }} style={styles.dropItem}>
-                <Lock size={18} /> <span>Security</span>
-              </button>
-              <hr style={{ border: "0", borderTop: "1px solid #eee", margin: "5px 0" }} />
-              <button className="dropdown-item" onClick={onLogout} style={{ ...styles.dropItem, color: "#ef4444" }}>
-                <LogOut size={18} /> <span>Logout</span>
+                <Lock size={18} /> <span>Change Password</span>
               </button>
             </div>
           )}
