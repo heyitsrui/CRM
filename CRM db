@@ -114,24 +114,33 @@ ENGINE=InnoDB
 AUTO_INCREMENT=10041
 ;
 
--- Table for Events
-CREATE TABLE IF NOT EXISTS timetree_events (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    event_date DATE NOT NULL,
-    start_time TIME NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `timetree_events` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`title` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`event_date` DATE NOT NULL,
+	`start_time` TIME NOT NULL,
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`deadline_date` DATE NULL DEFAULT NULL,
+	`deadline_time` TIME NULL DEFAULT NULL,
+	PRIMARY KEY (`id`) USING BTREE
+)
+COLLATE='utf8mb4_uca1400_ai_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=23
+;
 
--- Table for Chats linked to Events
-CREATE TABLE IF NOT EXISTS event_chats (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    event_id INT NOT NULL,
-    sender_name VARCHAR(255) NOT NULL,
-    message_text TEXT NOT NULL,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES timetree_events(id) ON DELETE CASCADE
-);
+CREATE TABLE `event_chats` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`event_id` INT(11) NOT NULL,
+	`sender_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`message_text` TEXT NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`sent_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `event_id` (`event_id`) USING BTREE,
+	CONSTRAINT `event_chats_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `timetree_events` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
+)
+COLLATE='utf8mb4_uca1400_ai_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=14
+;
 
-ALTER TABLE timetree_events MODIFY COLUMN deadline_date DATE NULL;
-ALTER TABLE timetree_events MODIFY COLUMN start_time TIME NOT NULL;
