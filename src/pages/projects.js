@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
-  CheckCircle, 
   Clock, 
   MessageSquare, 
-  LayoutGrid, 
   UserCircle, 
-  Trophy, 
   Send, 
   DollarSign, 
   Building2, 
-  Phone 
+  Phone,
+  Search, X, Filter
 } from "lucide-react";
 import axios from "axios";
 import "../styles/projects.css";
@@ -19,6 +17,14 @@ const Projects = ({ currentUser }) => {
   const [visibleDetails, setVisibleDetails] = useState({});
   const [visibleNotes, setVisibleNotes] = useState({});
   const [newComment, setNewComment] = useState({});
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+const columns = [
+    'All', 'Lead', 'For Proposal', 'Proposal', 'Purchase Order', 'Site Survey-POC', 
+    'Closed Lost', 'Completed Project', 'Inactive Project', 
+    'Renewal Support', 'Previous Year Project', 'Recovered Project'
+  ];
 
   // ✅ Debugging: This will tell you exactly what properties exist in your user object
   useEffect(() => {
@@ -81,48 +87,88 @@ const Projects = ({ currentUser }) => {
   ).length;
   const progress = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
 
+const filteredData = useMemo(() => {
+    return projects.filter((p) => {
+      const projectName = p.deal_name || "";
+      const companyName = p.company || "";
+      
+      const matchesSearch = projectName.toLowerCase().includes(search.toLowerCase()) || 
+                            companyName.toLowerCase().includes(search.toLowerCase());
+      
+      const matchesStatus = statusFilter === "All" || p.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [search, statusFilter, projects]);
+
+  // Helper to format class names for CSS (e.g., "Closed Lost" -> "closed-lost")
+  const statusClass = (status) => status?.toLowerCase().replace(/[\s/]+/g, '-');
+
   return (
     <div className="projects-page-wrapper">
       <div className="projects-container">
         
-        {/* --- STATS HEADER --- */}
-        <div className="stats-header-grid">
-          <div className="stat-pill-card">
-            <div className="icon-wrap blue"><LayoutGrid size={20} /></div>
-            <div className="stat-text"><h3>{total}</h3><p>Active Projects</p></div>
-          </div>
-          <div className="stat-pill-card">
-            <div className="icon-wrap green"><CheckCircle size={20} /></div>
-            <div className="stat-text">
-              <h3>{progress}%</h3><p>Completion Rate</p>
-              <div className="progress-bar-bg">
-                <div className="progress-bar-fill" style={{ width: `${progress}%` }}></div>
-              </div>
+
+    <div className="proposal-header">
+          <h1>All Projects</h1>
+          
+          <div className="header-actions">
+            {/* ✅ Status Filter */}
+            <div className="filter-wrapper">
+              <Filter size={18} className="filter-icon" />
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="status-select"
+              >
+                {columns.map(col => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ✅ Search Bar */}
+            <div className="search-container">
+              <Search size={18} className="search-icon-fixed" style={{position: 'absolute', left: '10px', color: '#94a3b8'}} />
+              <input
+                className="search-input"
+                style={{paddingLeft: '35px'}}
+                placeholder="Search name or company..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <X 
+                  size={18} 
+                  className="clear-icon" 
+                  onClick={() => setSearch("")} 
+                />
+              )}
             </div>
           </div>
-          <div className="stat-pill-card">
-            <div className="icon-wrap purple"><Trophy size={20} /></div>
-            <div className="stat-text"><h3>{approvedCount}</h3><p>Approved</p></div>
           </div>
-        </div>
 
-        <div className="projects-content">
+<div className="projects-content">
           <h2 className="section-title">Project Pipelines & Tracking</h2>
           
           <div className="project-items-stack">
-            {projects.length === 0 ? (
-              <div className="white-project-card">No active projects found.</div>
+            {/* ✅ FIXED: Changed 'projects' to 'filteredData' */}
+            {filteredData.length === 0 ? (
+              <div className="white-project-card">No projects found matching your criteria.</div>
             ) : (
-              projects.map((proj) => (
+              filteredData.map((proj) => (
                 <div 
                   key={proj.id} 
                   className="white-project-card project-card-interactive" 
+                  /* We stop propagation here so clicking the card toggles, 
+                     but clicking buttons inside doesn't double-toggle */
                   onClick={() => toggleDetails(proj.id)}
                 >
                   <div className="card-details">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h4>{proj.deal_name || "Project Item"}</h4>
-                      <span className={`status-badge ${proj.status?.toLowerCase() || 'lead'}`}>
+                      {/* ✅ Status Class Helper for CSS colors */}
+                      <span className={`status-badge ${statusClass(proj.status)}`}>
                         {proj.status || 'Lead'}
                       </span>
                     </div>
@@ -147,7 +193,10 @@ const Projects = ({ currentUser }) => {
                         <div className="notes-toggle-wrapper">
                           <button 
                             className="notes-toggle-btn" 
-                            onClick={() => setVisibleNotes(prev => ({ ...prev, [proj.id]: !prev[proj.id] }))}
+                            onClick={(e) => {
+                               e.stopPropagation();
+                               setVisibleNotes(prev => ({ ...prev, [proj.id]: !prev[proj.id] }));
+                            }}
                           >
                             <MessageSquare size={12} /> Discussion ({proj.comments?.length || 0})
                           </button>
@@ -158,7 +207,6 @@ const Projects = ({ currentUser }) => {
                                 {proj.comments && proj.comments.length > 0 ? (
                                   proj.comments.map((c, i) => (
                                     <div key={i} className="comment-item">
-                                      {/* ✅ Shows user name with a bold highlight */}
                                       <span className="comment-user">{c.user_name || "Unknown User"}:</span>
                                       <span className="comment-text">{c.comment_text}</span>
                                     </div>
