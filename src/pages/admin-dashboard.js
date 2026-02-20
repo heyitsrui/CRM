@@ -11,6 +11,7 @@ import Client from './client';
 import Projects from './projects';
 import CPass from "./c-pass";
 import Finance from "./finance";
+import TimeTree from "./timetree";
 
 // --- Chart.js Imports ---
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -309,7 +310,7 @@ export default function Dashboard() {
       case 'my task':
         return <Tasks loggedInUser={loggedInUser} />;
       case 'time tree':
-        return <div className="p-4"><h2>Time Tree View</h2><p>Coming Soon...</p></div>;
+        return <TimeTree loggedInUser={loggedInUser} />;
       case 6:
         if (loggedInUser?.role === 'admin') {
           return <UserManagement currentUser={loggedInUser} />;
