@@ -312,11 +312,16 @@ body {
 .icon-circle {
   width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
 }
-.icon-circle.blue { background: #e3efff; color: #007bff; }
-.icon-circle.yellow { background: #fff8e1; color: #ffc107; }
-.icon-circle.green { background: #e8f5e9; color: #28a745; }
-.icon-circle.red { background: #ffebee; color: #dc3545; }
-.icon-circle.teal { background: #e0f2f1; color: #009688; }
+.icon-circle.lead { background: #FAD7A0; color: #f39c12; }
+.icon-circle.proposal { background: #A9D6F2; color: #3498db; }
+.icon-circle.order { background: #D7BDE2; color: #9b59b6; }
+.icon-circle.poc { background: #A2F3E3; color: #1abc9c; }
+.icon-circle.lost { background: #F5B7B1; color: #e74c3c; }
+.icon-circle.completed { background: #ABEBC6; color: #27ae60; }
+.icon-circle.inactive { background: #D5DBDB; color: #95a5a6; }
+.icon-circle.renewal { background: #FADBD8; color: #e67e22; }
+.icon-circle.previous { background: #D6DBDF; color: #34495e; }
+.icon-circle.recovered { background: #FAD0E0; color: #fd79a8; }
 
 .stat-card h3 {
   font-size: 22px;
