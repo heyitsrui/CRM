@@ -91,3 +91,26 @@ VALUES ('Test Task', 'Medium', 1, 'Pending');
 
 
 ALTER TABLE users MODIFY COLUMN avatar LONGTEXT;
+
+
+
+CREATE TABLE `projects` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`deal_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`status` ENUM('Lead','Proposal','Purchase Order','Site Survey-POC','Closed Lost','Completed Project','Inactive Project','Renewal Support','Previous Year Project','Recovered Project') NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`paid_amount` DECIMAL(15,2) NULL DEFAULT '0.00',
+	`due_amount` DECIMAL(15,2) NULL DEFAULT '0.00',
+	`total_amount` DECIMAL(15,2) NULL DEFAULT '0.00',
+	`deal_owner` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`contact` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`company` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`description` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`closed_date` DATE NULL DEFAULT NULL,
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE
+)
+COLLATE='utf8mb4_uca1400_ai_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=10041
+;
+
