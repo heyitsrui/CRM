@@ -22,7 +22,12 @@ import {
   Users,
   DollarSign,
   CheckCircle,
-  Clock
+  Clock,
+  Briefcase,
+  AlertCircle,
+  History,
+  RefreshCcw,
+  Search
 } from "lucide-react";
 
 import "../styles/dashboard.css";
@@ -34,22 +39,32 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const DashboardOverview = ({ stats, tasks }) => {
   // Data preparation for the Doughnut Chart
   const chartData = {
-    labels: ["Lead", "Bidding", "Signature", "Hold", "Approved"],
+    labels: ["Lead", "Proposal", "Signature", "Hold", "Approved"],
     datasets: [
       {
         data: [
           stats?.leads || 0,
-          stats?.bidding || 0,
-          stats?.signature || 0,
-          stats?.hold || 0,
-          stats?.approved || 0,
+          stats?.proposal || 0,
+          stats?.purchaseorder || 0,
+          stats?.sitesurveypoc || 0,
+          stats?.closedlost || 0,
+          stats?.completedproject || 0,
+          stats?.inactiveproject || 0,
+          stats?.renewalsupport || 0,
+          stats?.previousyearproject || 0,
+          stats?.recoveredproject || 0,
         ],
         backgroundColor: [
-          "#f39c12", // Lead (Orange)
-          "#3498db", // Bidding (Blue)
-          "#2ecc71", // Signature (Green)
-          "#e74c3c", // Hold (Red)
-          "#1abc9c", // Approved (Teal)
+          "#f39c12", // Lead
+          "#3498db", // Proposal
+          "#9b59b6", // Purchase Order
+          "#1abc9c", // Site Survey-POC
+          "#e74c3c", // Closed Lost
+          "#27ae60", // Completed Project
+          "#95a5a6", // Inactive Project
+          "#e67e22", // Renewal Support
+          "#34495e", // Previous Year Project
+          "#fd79a8"  // Recovered Project
         ],
         hoverOffset: 4,
         borderWidth: 0,
@@ -91,29 +106,64 @@ const DashboardOverview = ({ stats, tasks }) => {
         <div className="stat-card">
           <div className="icon-circle blue"><FileText size={20} /></div>
           <div>
-            <h3>{stats?.bidding || 0}</h3>
-            <p>Projects in Bidding</p>
+            <h3>{stats?.proposal || 0}</h3>
+            <p>Projects in Proposal</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle green"><FileText size={20} /></div>
+          <div className="icon-circle green"><Briefcase size={20} /></div>
           <div>
-            <h3>{stats?.signature || 0}</h3>
-            <p>Projects Signature</p>
+            <h3>{stats?.purchaseorder || 0}</h3>
+            <p>Purchase Order</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle red"><FileText size={20} /></div>
+          <div className="icon-circle teal"><Search size={20} /></div>
           <div>
-            <h3>{stats?.hold || 0}</h3>
-            <p>Projects on Hold</p>
+            <h3>{stats?.sitesurveypoc || 0}</h3>
+            <p>Site Survey-POC</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle teal"><Users size={20} /></div>
+          <div className="icon-circle red"><AlertCircle size={20} /></div>
           <div>
-            <h3>{stats?.approved || 0}</h3>
-            <p>Approved Projects</p>
+            <h3>{stats?.closedlost || 0}</h3>
+            <p>Closed Lost</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="icon-circle green"><CheckCircle size={20} /></div>
+          <div>
+            <h3>{stats?.completedproject || 0}</h3>
+            <p>Completed Project</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="icon-circle red"><Clock size={20} /></div>
+          <div>
+            <h3>{stats?.inactiveproject || 0}</h3>
+            <p>Inactive Project</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="icon-circle blue"><RefreshCcw size={20} /></div>
+          <div>
+            <h3>{stats?.renewalsupport || 0}</h3>
+            <p>Renewal Support</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="icon-circle teal"><History size={20} /></div>
+          <div>
+            <h3>{stats?.previousyearproject || 0}</h3>
+            <p>Previous Year Project</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="icon-circle yellow"><RefreshCcw size={20} /></div>
+          <div>
+            <h3>{stats?.recoveredproject || 0}</h3>
+            <p>Recovered Project</p>
           </div>
         </div>
       </div>
@@ -245,7 +295,7 @@ export default function Dashboard() {
     switch (activeIndex) {
       case 0:
         return <DashboardOverview stats={stats} tasks={userTasks} />;
-      case 1:
+      case 'project pipeline':
         return <Proposal currentUser={loggedInUser} />;
       case 2:
         return <Projects currentUser={loggedInUser} />;
