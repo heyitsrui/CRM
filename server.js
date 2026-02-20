@@ -203,48 +203,6 @@
     }
   });
 
-  // ================= API ROUTES =================
-  app.get("/api/admin-profile", async (req, res) => {
-    try {
-      const users = await queryDB("SELECT name, email FROM users WHERE role = 'admin' LIMIT 1");
-      if (users.length === 0) return res.json({ success: true, user: { name: "Admin", email: "admin@test.com" } });
-      res.json({ success: true, user: users[0] });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  app.get("/api/dashboard-stats", async (req, res) => {
-    try {
-      const stats = await queryDB(`
-        SELECT 
-          COUNT(CASE WHEN status = 'Lead' THEN 1 END) as leads,
-          COUNT(CASE WHEN status = 'Bidding' THEN 1 END) as bidding,
-          COUNT(CASE WHEN status = 'Signature' THEN 1 END) as signature,
-          COUNT(CASE WHEN status = 'Hold' THEN 1 END) as hold,
-          COUNT(CASE WHEN status = 'Approved' THEN 1 END) as approved,
-          SUM(paid_amount) as totalPaid,
-          SUM(due_amount) as totalDue
-        FROM projects
-      `);
-      const data = stats[0];
-      res.json({
-        success: true,
-        stats: {
-          leads: Number(data.leads),
-          bidding: Number(data.bidding),
-          signature: Number(data.signature),
-          hold: Number(data.hold),
-          approved: Number(data.approved),
-          totalPaid: Number(data.totalPaid || 0),
-          totalDue: Number(data.totalDue || 0),
-        },
-      });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
   // ================= USERS =================
   app.get("/api/users", async (req, res) => {
     try {
@@ -307,135 +265,249 @@
     }
   });
 
-  // ================= PROJECTS / DEALS API =================
-
-  /**
-   * GET All Projects
-   * Fetches all project records sorted by the newest first.
-   */
-  app.get("/api/projects", async (req, res) => {
+  // ================= API ROUTES =================
+  app.get("/api/admin-profile", async (req, res) => {
     try {
-      const rows = await queryDB(`
-        SELECT id, deal_name, deal_owner, address, status, paid_amount, due_amount,
-              total_amount, description, contact, company, created_at
+      const users = await queryDB("SELECT name, email FROM users WHERE role = 'admin' LIMIT 1");
+      if (users.length === 0) return res.json({ success: true, user: { name: "Admin", email: "admin@test.com" } });
+      res.json({ success: true, user: users[0] });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get("/api/dashboard-stats", async (req, res) => {
+    try {
+      const stats = await queryDB(`
+        SELECT 
+          COUNT(CASE WHEN status = 'Lead' THEN 1 END) as leads,
+          COUNT(CASE WHEN status = 'Proposal' THEN 1 END) as proposal,
+          COUNT(CASE WHEN status = 'Purchase Order' THEN 1 END) as purchaseorder,
+          COUNT(CASE WHEN status = 'Site Survey-POC' THEN 1 END) as sitesurveypoc,
+          COUNT(CASE WHEN status = 'Closed Lost' THEN 1 END) as closedlost,
+          COUNT(CASE WHEN status = 'Completed Project' THEN 1 END) as completedproject,
+          COUNT(CASE WHEN status = 'Inactive Project' THEN 1 END) as inactiveproject,
+          COUNT(CASE WHEN status = 'Renewal Support' THEN 1 END) as renewalsupport,
+          COUNT(CASE WHEN status = 'Previous Year Project' THEN 1 END) as previousyearproject,
+          COUNT(CASE WHEN status = 'Recovered Project' THEN 1 END) as recoveredproject,
+          SUM(paid_amount) as totalPaid,
+          SUM(due_amount) as totalDue
         FROM projects
-        ORDER BY created_at DESC
       `);
-      res.json({ success: true, projects: rows });
+      const data = stats[0];
+      res.json({
+        success: true,
+        stats: {
+          leads: Number(data.leads),
+          proposal: Number(data.proposal),
+          purchaseorder: Number(data.purchaseorder),
+          sitesurveypoc: Number(data.sitesurveypoc),
+          closedlost: Number(data.closedlost),
+          completedproject: Number(data.completedproject),
+          inactiveproject: Number(data.inactiveproject),
+          renewalsupport: Number(data.renewalsupport),
+          previousyearproject: Number(data.previousyearproject),
+          recoveredproject: Number(data.recoveredproject),
+          totalPaid: Number(data.totalPaid || 0),
+          totalDue: Number(data.totalDue || 0),
+        },
+      });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
   });
+  
+// ================= PROJECTS / DEALS API =================
 
-  /**
-   * POST New Project
-   * Initializes a project as a 'Lead' with 0 paid/due amounts.
-   */
-  app.post("/api/projects", async (req, res) => {
-    const { deal_name, deal_owner, address, description, contact, company, total_amount } = req.body;
+app.get("/api/projects", async (req, res) => {
+  try {
+    // Updated query: Removed address, added closed_date
+    const rows = await queryDB(`
+      SELECT id, deal_name, status, paid_amount, due_amount, total_amount, 
+             deal_owner, description, contact, company, closed_date, created_at
+      FROM projects
+      ORDER BY created_at DESC
+    `);
+    res.json({ success: true, projects: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST New Project
+ * Calculates due_amount based on initial total and paid amounts.
+ */
+app.post("/api/projects", async (req, res) => {
+  const { 
+    deal_name, deal_owner, status, description, 
+    contact, company, total_amount, paid_amount, closed_date 
+  } = req.body;
+
+  const finalDate = (closed_date && closed_date !== "") ? closed_date : null;
+  
+  if (!deal_name) {
+    return res.status(400).json({ success: false, message: "Deal Name is required" });
+  }
+
+  try {
+    const total = parseFloat(total_amount) || 0;
+    const paid = parseFloat(paid_amount) || 0;
+    const due = total - paid; // Logic: Total - Paid = Due
+
+    const result = await queryDB(
+      `INSERT INTO projects
+      (deal_name, deal_owner, status, paid_amount, due_amount, total_amount, description, contact, company, closed_date, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, 
+      [
+        deal_name, 
+        deal_owner || "", 
+        status || 'Lead', 
+        paid, 
+        due, 
+        total, 
+        description || "", 
+        contact || "", 
+        company || "",
+        closed_date || null
+      ]
+    );
+
+    const newId = result.insertId !== undefined ? Number(result.insertId) : result.id;
+    const project = await queryDB("SELECT * FROM projects WHERE id = ?", [newId]);
     
-    if (!deal_name) {
-      return res.status(400).json({ success: false, message: "Deal Name is required" });
-    }
+    res.json({ success: true, project: project[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-    try {
-      const totalAmountValue = parseFloat(total_amount) || 0; 
-      
-      const result = await queryDB(
-        `INSERT INTO projects
-        (deal_name, deal_owner, address, status, paid_amount, due_amount, total_amount, description, contact, company, created_at)
-        VALUES (?, ?, ?, 'Lead', 0, 0, ?, ?, ?, ?, NOW())`, 
-        [
-          deal_name, 
-          deal_owner || "", 
-          address || "", 
-          totalAmountValue, 
-          description || "", 
-          contact || "", 
-          company || ""
-        ]
+/**
+ * PUT Update Project Details
+ * Recalculates due_amount upon every update.
+ */
+app.put("/api/projects/:id", async (req, res) => {
+  const { id } = req.params;
+  const { 
+    deal_name, deal_owner, status, description, 
+    contact, company, total_amount, paid_amount, closed_date 
+  } = req.body;
+
+  try {
+    const total = parseFloat(total_amount) || 0;
+    const paid = parseFloat(paid_amount) || 0;
+    const due = total - paid;
+
+    await queryDB(
+      `UPDATE projects 
+      SET deal_name=?, deal_owner=?, status=?, description=?, contact=?, 
+          company=?, total_amount=?, paid_amount=?, due_amount=?, closed_date=?
+      WHERE id=?`,
+      [
+        deal_name, 
+        deal_owner || "", 
+        status || 'Lead',
+        description || "", 
+        contact || "", 
+        company || "", 
+        total,
+        paid,
+        due,
+        closed_date || null,
+        id
+      ]
+    );
+    res.json({ success: true, message: "Project updated successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * PUT Update Project Status
+ */
+app.put("/api/projects/:id/status", async (req, res) => {
+  const { status } = req.body;
+  const { id } = req.params;
+  try {
+    await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE Project
+ */
+app.delete("/api/projects/:id", async (req, res) => {
+  try {
+    await queryDB("DELETE FROM projects WHERE id=?", [req.params.id]);
+    res.json({ success: true, message: "Project deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+//BULK UPLOAD
+app.post("/api/projects/bulk", async (req, res) => {
+  const { deals } = req.body;
+
+  if (!deals || deals.length === 0) {
+    return res.status(400).json({ success: false, message: "No data found" });
+  }
+
+  // ✅ Allowed statuses (Must match your SQL ENUM exactly)
+  const allowedStatuses = [
+    'Lead', 'Proposal', 'Purchase Order', 'Site Survey-POC', 
+    'Closed Lost', 'Completed Project', 'Inactive Project', 
+    'Renewal Support', 'Previous Year Project', 'Recovered Project'
+  ];
+
+  try {
+    const values = [];
+    const placeholders = deals.map((d, index) => {
+      // 1. Clean the status (Trim spaces and check if allowed)
+      let rawStatus = d.status ? d.status.trim() : 'Lead';
+      const status = allowedStatuses.includes(rawStatus) ? rawStatus : 'Lead';
+
+      // 2. Format numbers
+      const total = parseFloat(d.total_amount) || 0;
+      const paid = 0; 
+      const due = total;
+
+      // 3. Push to values array (ensure order matches SQL columns)
+      values.push(
+        d.deal_name || `Untitled Deal ${index + 1}`,
+        d.deal_owner || "Unassigned",
+        status,
+        paid,
+        due,
+        total,
+        "Excel Bulk Import", // description
+        "", // contact
+        "", // company
+        d.closed_date || null
       );
 
-      // Fetch and return the newly created project
-      const newId = result.insertId !== undefined ? Number(result.insertId) : result.id;
-      const project = await queryDB("SELECT * FROM projects WHERE id = ?", [newId]);
-      
-      res.json({ success: true, project: project[0] });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+      return "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    }).join(", ");
 
-  /**
-   * PUT Update Project Details
-   * Updates general information and total contract value.
-   */
-  app.put("/api/projects/:id", async (req, res) => {
-    const { id } = req.params;
-    const { deal_name, deal_owner, address, description, contact, company, total_amount } = req.body;
+    const sql = `INSERT INTO projects 
+      (deal_name, deal_owner, status, paid_amount, due_amount, total_amount, description, contact, company, closed_date, created_at) 
+      VALUES ${placeholders}`;
 
-    try {
-      await queryDB(
-        `UPDATE projects 
-        SET deal_name=?, deal_owner=?, address=?, description=?, contact=?, company=?, total_amount=? 
-        WHERE id=?`,
-        [
-          deal_name, 
-          deal_owner || "", 
-          address || "", 
-          description || "", 
-          contact || "", 
-          company || "", 
-          parseFloat(total_amount) || 0, 
-          id
-        ]
-      );
-      res.json({ success: true, message: "Project updated successfully" });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+    await queryDB(sql, values);
 
-  /**
-   * PUT Update Project Status
-   */
-  app.put("/api/projects/:id/status", async (req, res) => {
-    const { status } = req.body;
-    const { id } = req.params;
-    try {
-      await queryDB("UPDATE projects SET status=? WHERE id=?", [status, id]);
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * DELETE Project
-   */
-  app.delete("/api/projects/:id", async (req, res) => {
-    try {
-      await queryDB("DELETE FROM projects WHERE id=?", [req.params.id]);
-      res.json({ success: true, message: "Project deleted" });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // ================= DELETE COMPANY =================
-  app.delete("/api/companies/:id", async (req, res) => {
-    const { id } = req.params;
-    try {
-      const result = await queryDB("DELETE FROM company WHERE id = ?", [id]);
-      if (result.affectedRows > 0) {
-        res.json({ success: true, message: "Company deleted successfully" });
-      } else {
-        res.status(404).json({ success: false, error: "Company not found" });
-      }
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+    res.json({ success: true, message: `Imported ${deals.length} deals successfully!` });
+  } catch (err) {
+    console.error("Critical Bulk Error:", err);
+    res.status(500).json({ 
+      success: false, 
+      error: "Database rejection. Check row 159 for special characters or invalid status." 
+    });
+  }
+});
 
   // ================= CLIENTS =================
   app.get("/api/clients", async (req, res) => {
@@ -800,4 +872,5 @@ app.post('/api/companies/bulk', async (req, res) => {
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
