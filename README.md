@@ -16,3 +16,5 @@ npm install express nodemailer cors dotenv otp-generator (inside backend folder)
 
 FOR DATABASE
 npm install express mariadb cors
+
+npm install xlsx
