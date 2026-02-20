@@ -727,6 +727,7 @@ app.post("/api/projects/bulk", async (req, res) => {
     }
   });
 
+
   // ================= FINANCE API =================
 
   // GET all projects for Finance view
@@ -744,41 +745,51 @@ app.post("/api/projects/bulk", async (req, res) => {
   });
 
   // UPDATE Finance record (Calculates Due Amount automatically)
+// ✅ NEW FINANCE UPDATE ROUTE
 app.put("/api/finance/update/:id", async (req, res) => {
-    const { id } = req.params;
-    const { paid_amount, role } = req.body; // Pass the role from the frontend
+  const { id } = req.params;
+  const { paid_amount, role } = req.body;
 
-    // Server-side role check
-    if (role !== 'admin' && role !== 'finance') {
-        return res.status(403).json({ success: false, message: "Unauthorized access" });
-    }
-    try {
-      // 1. Fetch total_amount from DB (Matching your HeidiSQL schema)
-      const rows = await queryDB("SELECT total_amount FROM projects WHERE id = ?", [id]);
-      if (rows.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
+  if (role !== 'admin' && role !== 'finance') {
+    return res.status(403).json({ success: false, message: "Unauthorized" });
+  }
 
-      const totalContract = parseFloat(rows[0].total_amount) || 0;
-      const valPaid = parseFloat(paid_amount) || 0;
-      
-      // 2. The Logic: Total - Paid = Due
-      const valDue = totalContract - valPaid;
+  try {
+    // 1. Get the current project data
+    const project = await queryDB("SELECT total_amount, status FROM projects WHERE id = ?", [id]);
+    if (project.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
 
-      // 3. Update the database
-      await queryDB(
-        "UPDATE projects SET paid_amount = ?, due_amount = ?, status = 'Approved' WHERE id = ?",
-        [valPaid, valDue, id]
-      );
+    const total = parseFloat(project[0].total_amount);
+    const currentStatus = project[0].status; // Keep the existing status
+    const paid = parseFloat(paid_amount) || 0;
+    const due = total - paid;
 
-      res.json({ 
-        success: true, 
-        message: "Finance updated successfully", 
-        balance: valDue 
-      });
-    } catch (err) {
-      console.error("FINANCE ERROR:", err.message);
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+    // 2. Update the record - Added 'currentStatus' to the array to fix the "Position 4" error
+    const sql = "UPDATE projects SET paid_amount = ?, due_amount = ?, status = ? WHERE id = ?";
+    const values = [paid, due, currentStatus, id]; // 4 parameters for 4 question marks
+
+    await queryDB(sql, values);
+
+    res.json({ 
+      success: true, 
+      balance: due.toFixed(2),
+      message: "Payment updated successfully" 
+    });
+  } catch (err) {
+    console.error("FINANCE ERROR:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ✅ GET FINANCE SPECIFIC DATA
+app.get("/api/finance/projects", async (req, res) => {
+  try {
+    const rows = await queryDB("SELECT id, deal_name, company, total_amount, paid_amount, due_amount, status FROM projects ORDER BY created_at DESC");
+    res.json({ success: true, projects: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
   // ================= COMPANIES API =================
 
@@ -948,6 +959,7 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
 
 
