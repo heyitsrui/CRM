@@ -114,9 +114,10 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
                   <span className="link-text">{proj.deal_name}</span>
                 </td>
                 <td>{proj.company || '--'}</td>
-                <td>${Number(proj.total_amount).toLocaleString()}</td>
-                <td>${Number(proj.paid_amount).toLocaleString()}</td>
-                <td>${Number(proj.due_amount).toLocaleString()}</td>
+                <td>₱{Number(proj.total_amount).toLocaleString()}</td>
+                <td>₱{Number(proj.paid_amount).toLocaleString()}</td>
+                <td style={{ color: proj.due_amount > 0 ? '#dc3545' : '#28a745', fontWeight: 'bold' }}>
+                  ₱{Number(proj.due_amount).toLocaleString()}</td>
                 <td>
                   <span className={`status-pill ${proj.status?.toLowerCase()}`}>
                     {proj.status || 'N/A'}
