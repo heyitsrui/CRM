@@ -18,10 +18,15 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
 
   const menuItems = [ 
     { label: 'Dashboard', icon: <Home size={20} /> },
-    { label: 'Proposal', icon: <Lightbulb size={20} /> },
+    { label: 'Proposal',
+      icon: <Lightbulb size={20} />,
+      isDropdown: true,
+      subItems: ['Project Pipeline', 'Project Sheets'] 
+    },
+    
     { 
       label: 'Projects', 
-      icon: <FileText size={20} />, 
+      icon: <FileText size={20} />,
     },
     { 
       label: 'Finance', 
