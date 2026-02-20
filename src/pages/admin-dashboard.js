@@ -12,6 +12,7 @@ import Projects from './projects';
 import CPass from "./c-pass";
 import Finance from "./finance";
 import TimeTree from "./timetree";
+import Sheets from "./project-sheets";
 
 // --- Chart.js Imports ---
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -40,7 +41,8 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const DashboardOverview = ({ stats, tasks }) => {
   // Data preparation for the Doughnut Chart
   const chartData = {
-    labels: ["Lead", "Proposal", "Signature", "Hold", "Approved"],
+    labels: ["Lead", "Proposal", "Purchase Order", "Site Survey-POC", "Closed Lost", 
+      "Completed Project", "Inactive Project", "Renewal Support", "Previous Year Project", "Recovered Project"],
     datasets: [
       {
         data: [
@@ -98,70 +100,70 @@ const DashboardOverview = ({ stats, tasks }) => {
       {/* Status Stats Cards */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="icon-circle yellow"><LayoutGrid size={20} /></div>
+          <div className="icon-circle lead"><LayoutGrid size={20} /></div>
           <div>
             <h3>{stats?.leads || 0}</h3>
             <p>Projects in Lead</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle blue"><FileText size={20} /></div>
+          <div className="icon-circle proposal"><FileText size={20} /></div>
           <div>
             <h3>{stats?.proposal || 0}</h3>
             <p>Projects in Proposal</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle green"><Briefcase size={20} /></div>
+          <div className="icon-circle order"><Briefcase size={20} /></div>
           <div>
             <h3>{stats?.purchaseorder || 0}</h3>
             <p>Purchase Order</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle teal"><Search size={20} /></div>
+          <div className="icon-circle poc"><Search size={20} /></div>
           <div>
             <h3>{stats?.sitesurveypoc || 0}</h3>
             <p>Site Survey-POC</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle red"><AlertCircle size={20} /></div>
+          <div className="icon-circle lost"><AlertCircle size={20} /></div>
           <div>
             <h3>{stats?.closedlost || 0}</h3>
             <p>Closed Lost</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle green"><CheckCircle size={20} /></div>
+          <div className="icon-circle completed"><CheckCircle size={20} /></div>
           <div>
             <h3>{stats?.completedproject || 0}</h3>
             <p>Completed Project</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle red"><Clock size={20} /></div>
+          <div className="icon-circle inactive"><Clock size={20} /></div>
           <div>
             <h3>{stats?.inactiveproject || 0}</h3>
             <p>Inactive Project</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle blue"><RefreshCcw size={20} /></div>
+          <div className="icon-circle renewal"><RefreshCcw size={20} /></div>
           <div>
             <h3>{stats?.renewalsupport || 0}</h3>
             <p>Renewal Support</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle teal"><History size={20} /></div>
+          <div className="icon-circle previous"><History size={20} /></div>
           <div>
             <h3>{stats?.previousyearproject || 0}</h3>
             <p>Previous Year Project</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="icon-circle yellow"><RefreshCcw size={20} /></div>
+          <div className="icon-circle recovered"><RefreshCcw size={20} /></div>
           <div>
             <h3>{stats?.recoveredproject || 0}</h3>
             <p>Recovered Project</p>
@@ -298,6 +300,8 @@ export default function Dashboard() {
         return <DashboardOverview stats={stats} tasks={userTasks} />;
       case 'project pipeline':
         return <Proposal currentUser={loggedInUser} />;
+      case 'project sheets':
+        return <Sheets currentUser={loggedInUser} />;
       case 2:
         return <Projects currentUser={loggedInUser} />;
       case 3: 
