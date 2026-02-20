@@ -17,6 +17,7 @@
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASS || "ritzqt",
     database: process.env.DB_NAME || "crm",
+    dateStrings: true,
     connectionLimit: 5,
   });
 
@@ -869,8 +870,84 @@ app.post('/api/companies/bulk', async (req, res) => {
     }
 });
 
+// ================= TIMETREE EVENTS API (MariaDB Optimized) =================
+// 1. GET ALL EVENTS
+app.get("/api/timetree/events", async (req, res) => {
+    try {
+        const events = await queryDB("SELECT * FROM timetree_events ORDER BY event_date ASC, start_time ASC");
+        
+        for (let event of events) {
+            const chats = await queryDB("SELECT * FROM event_chats WHERE event_id = ?", [event.id]);
+            event.chats = chats;
+        }
+
+        return res.json({ success: true, events });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 2. CREATE EVENT (Including Deadline Time)
+app.post("/api/timetree/events", async (req, res) => {
+    try {
+        const { title, date, startTime, deadline_date, deadlineTime } = req.body;
+
+        if (!title || !date) {
+            return res.status(400).json({ success: false, error: "Title and Date are required." });
+        }
+
+        const finalStartTime = (startTime && startTime.length === 5) ? `${startTime}:00` : startTime;
+        const finalDeadlineTime = (deadlineTime && deadlineTime.length === 5) ? `${deadlineTime}:00` : deadlineTime;
+        const finalDate = date.split('T')[0]; 
+        const finalDeadlineDate = (deadline_date && deadline_date.trim() !== "") ? deadline_date : null;
+
+        const result = await queryDB(
+            "INSERT INTO timetree_events (title, event_date, start_time, deadline_date, deadline_time) VALUES (?, ?, ?, ?, ?)",
+            [title, finalDate, finalStartTime, finalDeadlineDate, finalDeadlineTime || null]
+        );
+        
+        return res.json({ 
+            success: true, 
+            insertId: result.insertId.toString() 
+        });
+
+    } catch (err) {
+        console.error("MARIADB ERROR:", err.sqlMessage || err.message);
+        return res.status(500).json({ success: false, error: err.sqlMessage || err.message });
+    }
+});
+
+// 3. Post chat
+app.post("/api/timetree/events/:id/chat", async (req, res) => {
+    const { id } = req.params;
+    const { sender_name, message_text } = req.body;
+    try {
+        await queryDB(
+            "INSERT INTO event_chats (event_id, sender_name, message_text) VALUES (?, ?, ?)",
+            [id, sender_name, message_text]
+        );
+        res.json({ success: true, message: "Chat saved" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 4. DELETE EVENT
+app.delete("/api/timetree/events/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        await queryDB("DELETE FROM event_chats WHERE event_id = ?", [id]); 
+        await queryDB("DELETE FROM timetree_events WHERE id = ?", [id]);
+        res.json({ success: true, message: "Event deleted" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
 
