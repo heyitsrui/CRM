@@ -144,3 +144,91 @@ ENGINE=InnoDB
 AUTO_INCREMENT=14
 ;
 
+CREATE TABLE company (
+    record_id INT(11) NOT NULL AUTO_INCREMENT,
+    company_name VARCHAR(255) NOT NULL,
+    company_owner VARCHAR(255) DEFAULT NULL,
+    phone VARCHAR(20) DEFAULT NULL,
+    city VARCHAR(255) DEFAULT NULL,
+    country VARCHAR(255) DEFAULT NULL,
+    industry ENUM ('Accounting',
+    'Airlines/Aviation',
+    'Apparel & Fashion',
+    'Automotive',
+    'Banking',
+    'Broadcast Media',
+    'Building Materials',
+    'Business Supplies and Equipment',
+    'Capital Markets',
+    'Chemicals',
+    'Civil Engineering',
+    'Computer Hardware',
+    'Computer Networking',
+    'Computer Software',
+    'Construction',
+    'Consumer Electronics',
+    'Consumer Goods',
+    'Consumer Services',
+    'Defense & Space',
+    'Education Management',
+    'Electrical/Electronic Manufacturing',
+    'Entertainment',
+    'Financial Services',
+    'Food & Beverages',
+    'Food Production',
+    'Gambling & Casinos',
+    'Government Administration',
+    'Higher Education',
+    'Hospital & Health Care',
+    'Hospitality',
+    'Individual & Family Services',
+    'Information Technology and Services',
+    'Insurance',
+    'Legal Services',
+    'Leisure, Travel & Tourism',
+    'Logistics and Supply Chain',
+    'Machinery',
+    'Management Consulting',
+    'Maritime',
+    'Mechanical or Industrial Engineering',
+    'Mining & Metals',
+    'Oil & Energy',
+    'Packaging and Containers',
+    'Pharmaceuticals',
+    'Photography',
+    'Printing',
+    'Professional Training & Coaching',
+    'Publishing',
+    'Real Estate',
+    'Renewables & Environment',
+    'Restaurants',
+    'Retail',
+    'Telecommunications',
+    'Transportation/Trucking/Railroad',
+    'Utilities',
+    'Venture Capital & Private Equity')NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (record_id)
+);
+
+ALTER TABLE company MODIFY industry VARCHAR(255) NOT NULL DEFAULT 'Other';
+ALTER TABLE company MODIFY phone VARCHAR(50) NULL;
+ALTER TABLE company MODIFY record_id BIGINT NOT NULL AUTO_INCREMENT;
+
+CREATE TABLE clients (
+    record_id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(30) DEFAULT NULL,
+    contact_owner VARCHAR(255),
+    assoc_company VARCHAR(255),
+    lead_status ENUM ('New', 'In Progress', 'Connected', 'Open Deal', 'Open', 'Attempted to Contact') DEFAULT 'New',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE clients 
+ADD COLUMN legacy_id VARCHAR(100) DEFAULT NULL;
+
+ALTER TABLE clients 
+MODIFY record_id BIGINT NOT NULL;
