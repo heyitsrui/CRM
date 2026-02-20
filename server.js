@@ -11,6 +11,10 @@
   app.use(cors());
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+  BigInt.prototype.toJSON = function() {
+    return this.toString();
+  };
+
   // ================= MariaDB Connection =================
   const pool = mariadb.createPool({
     host: process.env.DB_HOST || "localhost",
@@ -204,6 +208,8 @@
     }
   });
 
+
+
   // ================= USERS =================
   app.get("/api/users", async (req, res) => {
     try {
@@ -266,7 +272,7 @@
     }
   });
 
-  // ================= API ROUTES =================
+    // ================= API ROUTES =================
   app.get("/api/admin-profile", async (req, res) => {
     try {
       const users = await queryDB("SELECT name, email FROM users WHERE role = 'admin' LIMIT 1");
@@ -511,41 +517,92 @@ app.post("/api/projects/bulk", async (req, res) => {
 });
 
   // ================= CLIENTS =================
+
+  // 1. GET corrected to match your new table columns
   app.get("/api/clients", async (req, res) => {
     try {
-      const rows = await queryDB("SELECT * FROM clients ORDER BY id ASC");
+      // Select the actual columns from your CREATE TABLE definition
+      const rows = await queryDB("SELECT record_id, first_name, last_name, email, phone, contact_owner, assoc_company, lead_status, created_at FROM clients ORDER BY record_id ASC");
       res.json({ success: true, clients: rows });
     } catch (err) {
+      console.error("Fetch Clients Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
 
+  // 2. POST corrected to use first_name, last_name, etc.
   app.post("/api/clients", async (req, res) => {
-    const { clientName, companyName, email, salesRep } = req.body;
+    // Destructure names matching the 'formData' in your React client.js
+    const { first_name, last_name, email, phone, contact_owner, assoc_company, lead_status } = req.body;
+    
     try {
       await queryDB(
-        "INSERT INTO clients (clientName, companyName, email, salesRep) VALUES (?, ?, ?, ?)",
-        [clientName, companyName, email, salesRep]
+        `INSERT INTO clients (first_name, last_name, email, phone, contact_owner, assoc_company, lead_status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [first_name, last_name, email, phone || null, contact_owner || null, assoc_company || null, lead_status || 'New']
       );
       res.json({ success: true, message: "Client added successfully" });
     } catch (err) {
+      console.error("Add Client Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
 
+  // 3. DELETE corrected to use record_id
   app.delete("/api/clients/:id", async (req, res) => {
     const { id } = req.params;
     try {
-      const result = await queryDB("DELETE FROM clients WHERE id = ?", [id]);
+      const result = await queryDB("DELETE FROM clients WHERE record_id = ?", [id]);
       if (result.affectedRows > 0) {
         res.json({ success: true, message: "Client deleted" });
       } else {
         res.status(404).json({ success: false, error: "Client not found" });
       }
     } catch (err) {
+      console.error("Delete Client Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
+
+// 4. Bulk Insert Route for Clients (Already correct, keeping for completeness)
+app.post('/api/clients/bulk', async (req, res) => {
+    const { clients } = req.body;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const sql = `
+            INSERT INTO clients (record_id, first_name, last_name, email, phone, contact_owner, assoc_company, lead_status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                first_name = VALUES(first_name),
+                last_name = VALUES(last_name),
+                phone = VALUES(phone),
+                contact_owner = VALUES(contact_owner),
+                assoc_company = VALUES(assoc_company),
+                lead_status = VALUES(lead_status)
+        `;
+
+        // Make sure your mapping now includes record_id
+        const values = clients.map(c => [
+            c.record_id, // This is the ID from your Excel sheet
+            c.first_name,
+            c.last_name,
+            c.email,
+            c.phone || null,
+            c.contact_owner || null,
+            c.assoc_company || null,
+            c.lead_status || 'New'
+        ]);
+
+        const result = await conn.batch(sql, values);
+        res.json({ success: true, count: result.affectedRows });
+    } catch (err) {
+        console.error("Client Bulk Import Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
 
   // ================= TASKS API =================
 
@@ -727,7 +784,6 @@ app.post("/api/projects/bulk", async (req, res) => {
     }
   });
 
-
   // ================= FINANCE API =================
 
   // GET all projects for Finance view
@@ -791,10 +847,10 @@ app.get("/api/finance/projects", async (req, res) => {
   }
 });
 
-  // ================= COMPANIES API =================
+ // ================= COMPANIES API =================
 
-  // GET all companies
- app.get('/api/companies', async (req, res) => {
+// GET all companies
+app.get('/api/companies', async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
@@ -881,6 +937,47 @@ app.post('/api/companies/bulk', async (req, res) => {
     }
 });
 
+// Bulk Insert Route for Clients
+app.post('/api/clients/bulk', async (req, res) => {
+  console.log("Received data:", req.body.clients);
+    const { clients } = req.body;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const sql = `
+            INSERT INTO clients (record_id, first_name, last_name, email, phone, contact_owner, assoc_company, lead_status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                first_name = VALUES(first_name),
+                last_name = VALUES(last_name),
+                phone = VALUES(phone),
+                contact_owner = VALUES(contact_owner),
+                assoc_company = VALUES(assoc_company),
+                lead_status = VALUES(lead_status)
+        `;
+
+        // Make sure your mapping now includes record_id
+        const values = clients.map(c => [
+            c.record_id, // This is the ID from your Excel sheet
+            c.first_name,
+            c.last_name,
+            c.email,
+            c.phone || null,
+            c.contact_owner || null,
+            c.assoc_company || null,
+            c.lead_status || 'New'
+        ]);
+
+        const result = await conn.batch(sql, values);
+        res.json({ success: true, count: result.affectedRows });
+    } catch (err) {
+        console.error("Client Bulk Import Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
 // ================= TIMETREE EVENTS API (MariaDB Optimized) =================
 // 1. GET ALL EVENTS
 app.get("/api/timetree/events", async (req, res) => {
@@ -955,11 +1052,6 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
     }
 });
 
-
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
-
