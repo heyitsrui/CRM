@@ -710,40 +710,94 @@ app.put("/api/finance/update/:id", async (req, res) => {
   // ================= COMPANIES API =================
 
   // GET all companies
-  app.get("/api/companies", async (req, res) => {
+ app.get('/api/companies', async (req, res) => {
+    let conn;
     try {
-      // Note: We use aliases (AS) to match the names your React frontend expects
-      const rows = await queryDB(`
-        SELECT 
-          id, 
-          company_name AS name, 
-          company_owner AS owner, 
-          types, 
-          email, 
-          description 
-        FROM company 
-        ORDER BY id ASC
-      `);
-      res.json({ success: true, companies: rows });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+        conn = await pool.getConnection();
+        
+        // 1. CAST(record_id AS CHAR) prevents the BigInt JSON error
+        // 2. AS name/owner matches your React code
+        const rows = await conn.query(`
+            SELECT 
+                CAST(record_id AS CHAR) as record_id, 
+                company_name AS name, 
+                company_owner AS owner, 
+                industry, 
+                phone, 
+                city, 
+                country 
+            FROM company 
+            ORDER BY created_at DESC
+        `);
 
-  // POST a new company
-  app.post("/api/companies", async (req, res) => {
-    const { name, owner, types, email, description } = req.body;
-    try {
-      await queryDB(
-        "INSERT INTO company (company_name, company_owner, types, email, description) VALUES (?, ?, ?, ?, ?)",
-        [name, owner, types, email, description]
-      );
-      res.json({ success: true, message: "Company added successfully" });
+        console.log(`Successfully fetched ${rows.length} companies.`);
+        res.json({ success: true, companies: rows });
     } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
+        console.error("Database Fetch Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        if (conn) conn.release();
     }
-  });
+});
+
+// POST a new company
+app.post("/api/companies", async (req, res) => {
+  // UPDATED: Destructured to match your table's logic (industry, city, country, etc.)
+  const { name, owner, phone, city, country, industry } = req.body;
+  
+  try {
+    await queryDB(
+      `INSERT INTO company (company_name, company_owner, phone, city, country, industry) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, owner, phone, city, country, industry]
+    );
+    res.json({ success: true, message: "Company added successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Bulk Insert Route - FIXED for Large IDs and Auto-Increment
+app.post('/api/companies/bulk', async (req, res) => {
+    const { companies } = req.body;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const sql = `
+            INSERT INTO company (record_id, company_name, company_owner, phone, city, country, industry) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                company_name = VALUES(company_name),
+                company_owner = VALUES(company_owner),
+                phone = VALUES(phone),
+                city = VALUES(city),
+                country = VALUES(country),
+                industry = VALUES(industry)
+        `;
+
+        const values = companies.map(c => [
+            // Ensure record_id is a valid number (BigInt safe in JS) or null
+            (c.record_id && !isNaN(c.record_id)) ? c.record_id : null, 
+            c.company_name, 
+            c.company_owner || null, 
+            c.phone || null, 
+            c.city || null, 
+            c.country || null, 
+            c.industry || 'Other'
+        ]);
+
+        const result = await conn.batch(sql, values);
+        res.json({ success: true, count: result.affectedRows });
+    } catch (err) {
+        console.error("Bulk Import Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
 
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
