@@ -11,13 +11,9 @@ const Finance = ({ loggedInUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // 1. FLEXIBLE API URL
   const API_BASE_URL = `http://${window.location.hostname}:5000`;
-
-  // 2. ROLE CHECK
   const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
 
-  // 3. FILTER OPTIONS (Matched with projects.js)
   const statusOptions = [
     'All', 'Lead', 'For Proposal', 'Proposal', 'Purchase Order', 'Site Survey-POC', 
     'Closed Lost', 'Completed Project', 'Inactive Project', 
@@ -28,14 +24,12 @@ const Finance = ({ loggedInUser }) => {
     fetchFinanceData();
   }, []);
 
-  // 4. COMBINED FILTER LOGIC (Search + Status)
   const filteredProjects = useMemo(() => {
     return projects.filter((proj) => {
       const term = searchQuery.toLowerCase().trim();
       
       const matchesSearch = !term || 
-        proj.deal_name?.toLowerCase().includes(term) ||
-        proj.company?.toLowerCase().includes(term);
+        proj.deal_name?.toLowerCase().includes(term);
 
       const matchesStatus = statusFilter === "All" || proj.status === statusFilter;
 
@@ -88,8 +82,6 @@ const Finance = ({ loggedInUser }) => {
       </div>
 
       <div className="toolbar" style={{ display: 'flex', alignItems: 'center'}}>
-        
-        {/* ✅ STATUS FILTER (Copied from projects.js logic) */}
         <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <Filter size={18} style={{ color: '#64748b' }} />
           <select 
@@ -103,12 +95,11 @@ const Finance = ({ loggedInUser }) => {
           </select>
         </div>
 
-        {/* SEARCH BAR */}
         <div className="search-container" style={{ position: 'relative', flex: 1 }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input
             type="text"
-            placeholder="Search project name or company..."
+            placeholder="Search project name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: '100%', padding: '10px 40px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
@@ -128,7 +119,6 @@ const Finance = ({ loggedInUser }) => {
           <thead>
             <tr>
               <th>Project Name</th>
-              <th>Company</th>
               <th>Total Contract</th>
               <th>Paid Amount</th>
               <th>Due Amount</th>
@@ -143,7 +133,6 @@ const Finance = ({ loggedInUser }) => {
                   <td className="company-name-cell">
                     <span className="link-text">{proj.deal_name}</span>
                   </td>
-                  <td>{proj.company || '--'}</td>
                   <td>₱{Number(proj.total_amount).toLocaleString()}</td>
                   <td>₱{Number(proj.paid_amount).toLocaleString()}</td>
                   <td style={{ color: proj.due_amount > 0 ? '#dc3545' : '#28a745', fontWeight: 'bold' }}>
@@ -170,7 +159,7 @@ const Finance = ({ loggedInUser }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={canManageFinance ? 7 : 6} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                <td colSpan={canManageFinance ? 6 : 5} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
                   No projects found matching your criteria.
                 </td>
               </tr>
@@ -179,7 +168,6 @@ const Finance = ({ loggedInUser }) => {
         </table>
       </div>
 
-      {/* UPDATE MODAL */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-body">
