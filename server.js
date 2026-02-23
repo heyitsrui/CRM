@@ -979,11 +979,21 @@ app.post('/api/clients/bulk', async (req, res) => {
 });
 
 // ================= TIMETREE EVENTS API (MariaDB Optimized) =================
+
+app.get("/api/timetree/users", async (req, res) => {
+    try {
+        const users = await queryDB("SELECT id, name, email FROM users"); // Adjust table/column names if different
+        return res.json({ success: true, users });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // 1. GET ALL EVENTS
 app.get("/api/timetree/events", async (req, res) => {
     try {
         const events = await queryDB("SELECT * FROM timetree_events ORDER BY event_date ASC, start_time ASC");
-        
+
         for (let event of events) {
             const chats = await queryDB("SELECT * FROM event_chats WHERE event_id = ?", [event.id]);
             event.chats = chats;
@@ -1013,7 +1023,7 @@ app.post("/api/timetree/events", async (req, res) => {
             "INSERT INTO timetree_events (title, event_date, start_time, deadline_date, deadline_time) VALUES (?, ?, ?, ?, ?)",
             [title, finalDate, finalStartTime, finalDeadlineDate, finalDeadlineTime || null]
         );
-        
+
         return res.json({ 
             success: true, 
             insertId: result.insertId.toString() 
@@ -1025,7 +1035,7 @@ app.post("/api/timetree/events", async (req, res) => {
     }
 });
 
-// 3. Post chat
+// 3. Post chat (Ensures sender_name is captured from the frontend user selection)
 app.post("/api/timetree/events/:id/chat", async (req, res) => {
     const { id } = req.params;
     const { sender_name, message_text } = req.body;
@@ -1055,3 +1065,4 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
