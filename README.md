@@ -18,3 +18,5 @@ FOR DATABASE
 npm install express mariadb cors
 
 npm install xlsx
+
+npm install bcrypt
