@@ -336,7 +336,7 @@ const Company = ({ userRole }) => {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={toggleModal}>Cancel</button>
-                <button type="submit" className="btn-primary">Create Company</button>
+                <button type="submit" className="add-company-btn">Create Company</button>
               </div>
             </form>
           </div>
