@@ -104,7 +104,7 @@
       );
 
       await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: `"noreply-visible" <no-reply@yourdomain.com>`,
         to: email,
         subject: "Your OTP Code",
         html: `<h2>Your OTP is: ${otp}</h2><p>Valid for 5 minutes</p>`,
