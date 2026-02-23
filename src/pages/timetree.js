@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import '../styles/timetree.css';
 
 const API_BASE_URL = 'http://127.0.0.1:5000/api/timetree';
-const ROW_HEIGHT = 60; 
+const ROW_HEIGHT = 60;
 
 const formatDateToISO = (date) => {
     const y = date.getFullYear();
@@ -15,7 +15,7 @@ const formatDateToISO = (date) => {
 const parseDbDate = (dateStr) => {
     if (!dateStr) return null;
     const [y, m, d] = dateStr.substring(0, 10).split('-').map(Number);
-    return new Date(y, m - 1, d); 
+    return new Date(y, m - 1, d);
 };
 
 const TimeTree = () => {
@@ -24,24 +24,60 @@ const TimeTree = () => {
     const [activeEvent, setActiveEvent] = useState(null);
     const [newMessage, setNewMessage] = useState("");
     const [showModal, setShowModal] = useState(false);
+    const [currentUser, setCurrentUser] = useState(""); 
     const [formData, setFormData] = useState({
         title: '',
         startTime: '08:00',
         deadline: '',
-        deadlineTime: '', // New Field
-        date: formatDateToISO(new Date()) 
+        deadlineTime: '', 
+        date: formatDateToISO(new Date())
     });
 
     const chatEndRef = useRef(null);
 
-    const fetchEvents = async () => {
+    // Fetcher for events and active chat data
+    const fetchEvents = useCallback(async () => {
         try {
             const { data } = await axios.get(`${API_BASE_URL}/events`);
-            if (data.success) setEvents(data.events);
+            if (data.success) {
+                setEvents(data.events);
+                
+                // Update activeEvent data ONLY if it's currently open
+                setActiveEvent(current => {
+                    if (!current) return null;
+                    const updated = data.events.find(ev => ev.id === current.id);
+                    return updated || null;
+                });
+            }
         } catch (err) {
             console.error("Fetch error:", err);
         }
-    };
+    }, []);
+
+    // Set user on mount
+    useEffect(() => {
+        const rawStorage = localStorage.getItem('loggedInUser'); 
+        if (rawStorage) {
+            const loggedInUser = JSON.parse(rawStorage);
+            setCurrentUser(loggedInUser.name || loggedInUser.username || "Guest");
+        } else {
+            setCurrentUser("Guest_User");
+        }
+    }, []);
+
+    // Polling interval for events (5 seconds)
+    useEffect(() => {
+        fetchEvents();
+        const interval = setInterval(() => {
+            fetchEvents(); 
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [fetchEvents]);
+
+    // Auto-scroll chat when messages update
+    useEffect(() => { 
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+    }, [activeEvent?.chats]);
 
     const deleteEvent = async (id) => {
         if (!window.confirm("Delete event and chat history?")) return;
@@ -60,12 +96,12 @@ const TimeTree = () => {
         e.preventDefault();
         const timeStr = formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime;
         const dTimeStr = (formData.deadlineTime && formData.deadlineTime.length === 5) ? `${formData.deadlineTime}:00` : formData.deadlineTime;
-        
-        const payload = { 
-            ...formData, 
-            startTime: timeStr, 
+
+        const payload = {
+            ...formData,
+            startTime: timeStr,
             deadline_date: formData.deadline || null,
-            deadlineTime: dTimeStr || null 
+            deadlineTime: dTimeStr || null
         };
 
         try {
@@ -80,26 +116,33 @@ const TimeTree = () => {
         }
     };
 
-    const sendMessage = async (e) => {
-        if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
-            e.preventDefault();
-            const tempMsg = { sender_name: "Kervy", message_text: newMessage };
-            setNewMessage("");
-            try {
-                const { data } = await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, tempMsg);
-                if (data.success) {
-                    setActiveEvent(prev => ({ ...prev, chats: [...(prev.chats || []), tempMsg] }));
-                    fetchEvents();
-                }
-            } catch (err) {
-                setNewMessage(newMessage);
-                alert("Message failed");
-            }
-        }
-    };
+const sendMessage = async (e) => {
+    if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
+        e.preventDefault();
+        
+        // Get current time in 12-hour format (e.g., "11:28 AM")
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        
+        const msgText = newMessage;
+        setNewMessage(""); 
 
-    useEffect(() => { fetchEvents(); }, []);
-    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activeEvent?.chats]);
+        try {
+            await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, {
+                sender_name: currentUser,
+                message_text: msgText,
+                timestamp: timeString // This sends the formatted time to your DB
+            });
+            fetchEvents(); 
+        } catch (err) {
+            console.error("Message failed", err);
+        }
+    }
+};
 
     const changeMonth = (offset) => {
         setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1));
@@ -123,16 +166,12 @@ const TimeTree = () => {
 
     const getEventStyle = (startTime) => {
         if (!startTime) return { display: 'none' };
-        const parts = startTime.split(':');
-        const hours = parseInt(parts[0], 10);
-        const minutes = parseInt(parts[1], 10);
-        const totalMinutes = (hours * 60) + minutes;
-        const topOffset = (totalMinutes / 60) * ROW_HEIGHT;
-
-        return { 
-            top: `${topOffset}px`, 
-            height: `${ROW_HEIGHT}px`, 
-            position: 'absolute', 
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const topOffset = ((hours * 60 + minutes) / 60) * ROW_HEIGHT;
+        return {
+            top: `${topOffset}px`,
+            height: `${ROW_HEIGHT}px`,
+            position: 'absolute',
             zIndex: 10,
             width: '92%',
             left: '4%'
@@ -146,7 +185,7 @@ const TimeTree = () => {
         <div className="tt-container">
             <aside className="tt-sidebar-left">
                 <button className="btn-create" onClick={() => setShowModal(true)}>＋ Create</button>
-                
+
                 <div className="sidebar-month-header">
                     <span className="month-label">{selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
                     <div className="month-nav-btns">
@@ -157,7 +196,9 @@ const TimeTree = () => {
 
                 <div className="mini-calendar-container">
                     <div className="mini-cal-days-header">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d} className="mini-day-name">{d}</div>)}
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                            <div key={`${day}-${idx}`} className="mini-day-name">{day}</div>
+                        ))}
                     </div>
                     <div className="mini-cal-grid">
                         {[...Array(firstDay)].map((_, i) => <div key={`empty-${i}`} />)}
@@ -173,17 +214,11 @@ const TimeTree = () => {
                 <div className="event-list-sidebar">
                     <h3>Events</h3>
                     {events.map(ev => (
-                        <div key={ev.id} className={`sidebar-event-card ${activeEvent?.id === ev.id ? 'active' : ''}`} 
-                             onClick={() => { setSelectedDate(parseDbDate(ev.event_date)); setActiveEvent(ev); }}>
+                        <div key={ev.id} className={`sidebar-event-card ${activeEvent?.id === ev.id ? 'active' : ''}`}
+                            onClick={() => { setSelectedDate(parseDbDate(ev.event_date)); setActiveEvent(ev); }}>
                             <div className="sidebar-event-info">
                                 <strong>{ev.title}</strong>
                                 <div>{ev.start_time?.substring(0, 5)} | {ev.event_date?.substring(0, 10)}</div>
-                                {ev.deadline_date && (
-                                    <div className="deadline-text">
-                                        Due: {ev.deadline_date.substring(0, 10)} 
-                                        {ev.deadline_time && ` at ${ev.deadline_time.substring(0, 5)}`}
-                                    </div>
-                                )}
                             </div>
                             <button className="btn-delete" onClick={(e) => { e.stopPropagation(); deleteEvent(ev.id); }}>Delete</button>
                         </div>
@@ -215,8 +250,8 @@ const TimeTree = () => {
                             <div key={i} className="day-column">
                                 {[...Array(24)].map((_, j) => <div key={j} className="hour-grid-cell" />)}
                                 {events.filter(ev => ev.event_date?.substring(0, 10) === formatDateToISO(dayDate)).map(ev => (
-                                    <div key={ev.id} className={`event-card ${activeEvent?.id === ev.id ? 'selected' : ''}`} 
-                                         style={getEventStyle(ev.start_time)} onClick={() => setActiveEvent(ev)}>
+                                    <div key={ev.id} className={`event-card ${activeEvent?.id === ev.id ? 'selected' : ''}`}
+                                        style={getEventStyle(ev.start_time)} onClick={() => setActiveEvent(ev)}>
                                         <div className="event-title">{ev.title}</div>
                                         <div className="event-time">{ev.start_time?.substring(0, 5)}</div>
                                     </div>
@@ -228,25 +263,37 @@ const TimeTree = () => {
             </main>
 
             {activeEvent && (
-                <aside className="tt-sidebar-chat">
-                    <div className="chat-header">
-                        <span className="chat-header-title">{activeEvent.title}</span>
-                        <button onClick={() => setActiveEvent(null)} className="btn-close-chat">✕</button>
-                    </div>
-                    <div className="chat-messages">
-                        {activeEvent.chats?.map((msg, i) => (
-                            <div key={i} className={`chat-bubble ${msg.sender_name === "Kervy" ? "me" : "them"}`}>
-                                <div className="chat-sender">{msg.sender_name}</div>
-                                <div className="chat-text">{msg.message_text}</div>
-                            </div>
-                        ))}
-                        <div ref={chatEndRef} />
-                    </div>
-                    <div className="chat-input-container">
-                        <input className="chat-input" placeholder="Message..." value={newMessage} 
-                               onChange={(e) => setNewMessage(e.target.value)} onKeyDown={sendMessage} />
-                    </div>
-                </aside>
+                <div className="chat-popup-overlay" onClick={() => setActiveEvent(null)}>
+                    <aside className="tt-sidebar-chat" onClick={(e) => e.stopPropagation()}>
+                        <div className="chat-header">
+                            <span className="chat-header-title">{activeEvent.title}</span>
+                            <button onClick={() => setActiveEvent(null)} className="btn-close-chat">✕</button>
+                        </div>
+                        <div className="chat-messages messenger-layout">
+                            {activeEvent.chats?.map((msg, i) => (
+                                <div key={i} className={`chat-row ${msg.sender_name === currentUser ? "me" : "them"}`}>
+                                    <div className="bubble-wrapper">
+                                        {msg.sender_name !== currentUser && <div className="chat-sender-name">{msg.sender_name}</div>}
+                                        <div className={`chat-bubble ${msg.sender_name === currentUser ? 'me' : 'them'}`}>
+                                            {msg.message_text}
+                                        </div>
+                                        <div className="chat-timestamp">{msg.timestamp || "Just now"}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={chatEndRef} />
+                        </div>
+                        <div className="chat-input-container">
+                            <input 
+                                className="chat-input" 
+                                placeholder={`Message as ${currentUser}...`} 
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)} 
+                                onKeyDown={sendMessage} 
+                            />
+                        </div>
+                    </aside>
+                </div>
             )}
 
             {showModal && (
