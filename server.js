@@ -207,16 +207,17 @@
   // ================= RESET PASSWORD =================
   app.post("/reset-password", async (req, res) => {
     try {
-      const { email, password } = req.body;
-      const users = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-      if (!users || users.length === 0)
-        return res.json({ success: false, message: "Email not registered" });
+        const { email, password } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-      await queryDB("UPDATE users SET password = ? WHERE email = ?", [password, email]);
-      res.json({ success: true, message: "Password updated successfully" });
+        // Log this to confirm the hash is generated before updating
+        console.log("New Hashed Password:", hashedPassword);
+
+        await queryDB("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
+        res.json({ success: true, message: "Password updated successfully" });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, message: err.message });
+        console.error("Hashing Error:", err);
+        res.status(500).json({ success: false, message: err.message });
     }
   });
 
