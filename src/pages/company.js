@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, X, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Search, X, Trash2, FileSpreadsheet, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import '../styles/dashboard.css';
 
@@ -8,6 +8,7 @@ const Company = ({ userRole }) => {
   const [companies, setCompanies] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [industryFilter, setIndustryFilter] = useState('All'); // Added Industry filter state
   const fileInputRef = useRef(null);
 
   // ✅ ROLES
@@ -27,7 +28,7 @@ const Company = ({ userRole }) => {
     'Maritime', 'Mechanical or Industrial Engineering', 'Mining & Metals', 'Oil & Energy', 
     'Packaging and Containers', 'Pharmaceuticals', 'Photography', 'Printing', 'Professional Training & Coaching', 
     'Publishing', 'Real Estate', 'Renewables & Environment', 'Restaurants', 'Retail', 
-    'Telecommunications', 'Transportation/Trucking/Railroad', 'Utilities', 'Venture Capital & Private Equity'
+    'Telecommunications', 'Transportation/Trucking/Railroad', 'Utilities', 'Venture Capital & Private Equity','Other',
   ];
 
   const [formData, setFormData] = useState({
@@ -39,19 +40,14 @@ const Company = ({ userRole }) => {
     industry: ''
   });
 
-  // company.js - Replace your existing fetchCompanies function
   const fetchCompanies = async () => {
     try {
       setIsLoading(true);
       const response = await fetch('http://localhost:5000/api/companies');
       const data = await response.json();
       
-      console.log("Raw Data from API:", data); // Check F12 Console for this!
-
       if (data.success) {
         setCompanies(data.companies || []);
-      } else {
-        console.error("API Error:", data.error);
       }
     } catch (err) {
       console.error("Fetch failed:", err);
@@ -60,7 +56,6 @@ const Company = ({ userRole }) => {
     }
   };
 
-  // ✅ FIXED EXCEL IMPORT LOGIC
   const handleExcelImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -73,11 +68,7 @@ const Company = ({ userRole }) => {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rawData = XLSX.utils.sheet_to_json(ws);
 
-        console.log("Raw Excel Data Sample:", rawData[0]); // DEBUG: Check your headers here!
-
-        // Inside handleExcelImport in company.js
         const mappedData = rawData.map(row => {
-            // If 'Record ID' column exists and is a number, use it; otherwise, use null
             const rawId = row['Record ID'] || row['record_id'];
             const validId = (rawId && !isNaN(rawId)) ? rawId : null;
 
@@ -92,14 +83,12 @@ const Company = ({ userRole }) => {
             };
         });
 
-        // Filter to prevent sending empty rows that often exist at the end of Excel files
         const validCompanies = mappedData.filter(c => c.company_name && c.company_name.toString().trim() !== "");
 
         if (validCompanies.length === 0) {
-          return alert("Import failed: No valid company names found. Check your Excel column headers.");
+          return alert("Import failed: No valid company names found.");
         }
 
-        // 2. Send to backend
         const response = await fetch('http://localhost:5000/api/companies/bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -109,12 +98,9 @@ const Company = ({ userRole }) => {
         const result = await response.json();
         if (result.success) {
           alert(`Successfully processed ${validCompanies.length} companies!`);
-          fetchCompanies(); // Refresh table
-        } else {
-          alert("Import failed: " + result.error);
+          fetchCompanies();
         }
       } catch (err) {
-        console.error(err);
         alert("Error reading Excel: " + err.message);
       } finally {
         e.target.value = null; 
@@ -132,7 +118,6 @@ const Company = ({ userRole }) => {
         });
         const data = await response.json();
         if (data.success) fetchCompanies();
-        else alert("Error deleting: " + data.error);
       } catch (err) {
         console.error("Delete error:", err);
       }
@@ -143,23 +128,21 @@ const Company = ({ userRole }) => {
     fetchCompanies();
   }, []);
 
-  // ✅ SEARCH LOGIC (Must match server aliases: name, owner, industry, city)
+  // ✅ UPDATED SEARCH & INDUSTRY FILTER LOGIC
   const filteredCompanies = useMemo(() => {
-    const term = searchQuery.toLowerCase().trim();
-    
-    // If no search term, return all companies
-    if (!term) return companies;
-
-    const filtered = companies.filter((co) => (
+    return companies.filter((co) => {
+      const term = searchQuery.toLowerCase().trim();
+      
+      const matchesSearch = !term || 
         (co.name && co.name.toLowerCase().includes(term)) ||
         (co.owner && co.owner.toLowerCase().includes(term)) ||
-        (co.industry && co.industry.toLowerCase().includes(term)) ||
-        (co.city && co.city.toLowerCase().includes(term))
-    ));
+        (co.city && co.city.toLowerCase().includes(term));
 
-    console.log("Searching for:", term, "Found:", filtered.length);
-    return filtered;
-  }, [searchQuery, companies]);   
+      const matchesIndustry = industryFilter === 'All' || co.industry === industryFilter;
+
+      return matchesSearch && matchesIndustry;
+    });
+  }, [searchQuery, industryFilter, companies]);   
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -189,8 +172,6 @@ const Company = ({ userRole }) => {
       if (data.success) {
         await fetchCompanies();
         toggleModal();
-      } else {
-        alert("Error saving company: " + data.error);
       }
     } catch (err) {
       console.error("Submission error:", err);
@@ -224,18 +205,36 @@ const Company = ({ userRole }) => {
         </div>
       </div>
 
-      <div className="toolbar">
-        <div className="search-container">
+      <div className="toolbar" style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+        {/* ✅ INDUSTRY FILTER DROPDOWN */}
+        <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <Filter size={18} style={{ color: '#64748b' }} />
+          <select 
+            value={industryFilter} 
+            onChange={(e) => setIndustryFilter(e.target.value)}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', outline: 'none', maxWidth: '150px' }}
+          >
+            <option value="All">All</option>
+            {industries.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+          </select>
+        </div>
+
+        {/* SEARCH CONTAINER */}
+        <div className="search-container" style={{ position: 'relative', flex: 1 }}>
+          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input 
             type="text" 
-            placeholder="Search by name, owner, city, or industry..." 
+            placeholder="Search by name, owner, or city..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '10px 40px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
           />
-          {searchQuery ? (
-            <X size={18} className="search-icon clear-icon" onClick={() => setSearchQuery('')} />
-          ) : (
-            <Search size={18} className="search-icon" />
+          {searchQuery && (
+            <X 
+              size={18} 
+              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#94a3b8' }} 
+              onClick={() => setSearchQuery('')} 
+            />
           )}
         </div>
       </div>
@@ -262,7 +261,6 @@ const Company = ({ userRole }) => {
                   <tr key={co.record_id}>
                     <td style={{ textAlign: 'center' }}>{co.record_id}</td>
                     <td className="company-name-cell">
-                      {/* Uses 'name' as defined in server.js SELECT ... AS name */}
                       <span className="link-text">{co.name}</span>
                     </td>
                     <td>{co.owner || '--'}</td>
@@ -293,7 +291,6 @@ const Company = ({ userRole }) => {
         )}
       </div>
 
-      {/* Modal remains the same as your version but ensured canEdit check is robust */}
       {isModalOpen && canEdit && (
         <div className="modal-overlay">
           <div className="modal-content">
