@@ -1,16 +1,27 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, Lock } from "lucide-react";
-import "../styles/c-pass.css"; // Import the new aesthetic CSS
+import { Eye, EyeOff } from "lucide-react";
+import "../styles/c-pass.css";
 
 const CPass = ({ user }) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) return alert("Passwords do not match!");
+    setError("");
+
+    // Validation: 8+ characters, includes a number
+    const passwordRegex = /^(?=.*[0-9]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return setError("Password must be at least 8 characters and include a number.");
+    }
+    
+    if (newPassword !== confirmPassword) {
+      return setError("Passwords do not match!");
+    }
     
     setLoading(true);
     try {
@@ -20,13 +31,16 @@ const CPass = ({ user }) => {
         body: JSON.stringify({ email: user.email, password: newPassword }),
       });
       const data = await response.json();
+      
       if (data.success) {
         alert("Success! Your password is now secure.");
         setNewPassword("");
         setConfirmPassword("");
+      } else {
+        setError(data.message || "Failed to update password.");
       }
     } catch (err) {
-      alert("System error. Try again.");
+      setError("System error. Try again.");
     } finally {
       setLoading(false);
     }
@@ -37,6 +51,8 @@ const CPass = ({ user }) => {
       <div className="cpass-card">
         <h2 className="cpass-title">Change Password</h2>
         <p className="cpass-subtitle">Update your account credentials below.</p>
+
+        {error && <div className="cpass-error" style={{ color: '#ff4d4d', marginBottom: '15px' }}>{error}</div>}
 
         <form onSubmit={handlePasswordChange}>
           <div className="cpass-group">
