@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Edit, Search, X } from 'lucide-react';
+import { Edit, Search, X, Filter } from 'lucide-react';
 import axios from 'axios';
-import '../styles/dashboard.css'; // Ensure you have your styling here
+import '../styles/dashboard.css'; 
 
 const Finance = ({ loggedInUser }) => {
   const [projects, setProjects] = useState([]);
@@ -9,27 +9,39 @@ const Finance = ({ loggedInUser }) => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [paidAmount, setPaidAmount] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState("All");
 
-  // 1. FLEXIBLE API URL: Works on PC and other devices automatically
+  // 1. FLEXIBLE API URL
   const API_BASE_URL = `http://${window.location.hostname}:5000`;
 
-  // 2. ROLE CHECK: Only Admin and Finance can see Action buttons
-const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
+  // 2. ROLE CHECK
+  const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
+
+  // 3. FILTER OPTIONS (Matched with projects.js)
+  const statusOptions = [
+    'All', 'Lead', 'For Proposal', 'Proposal', 'Purchase Order', 'Site Survey-POC', 
+    'Closed Lost', 'Completed Project', 'Inactive Project', 
+    'Renewal Support', 'Previous Year Project', 'Recovered Project'
+  ];
 
   useEffect(() => {
     fetchFinanceData();
   }, []);
 
+  // 4. COMBINED FILTER LOGIC (Search + Status)
   const filteredProjects = useMemo(() => {
-    const term = searchQuery.toLowerCase().trim();
-    if (!term) return projects;
+    return projects.filter((proj) => {
+      const term = searchQuery.toLowerCase().trim();
+      
+      const matchesSearch = !term || 
+        proj.deal_name?.toLowerCase().includes(term) ||
+        proj.company?.toLowerCase().includes(term);
 
-    return projects.filter((proj) =>
-      proj.deal_name?.toLowerCase().includes(term) ||
-      proj.company?.toLowerCase().includes(term) ||
-      proj.status?.toLowerCase().includes(term)
-    );
-  }, [searchQuery, projects]);
+      const matchesStatus = statusFilter === "All" || proj.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchQuery, statusFilter, projects]);
 
   const fetchFinanceData = async () => {
     try {
@@ -44,7 +56,7 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
 
   const handleOpenModal = (project) => {
     setSelectedProject(project);
-    setPaidAmount(project.paid_amount); // Pre-fill with existing paid amount
+    setPaidAmount(project.paid_amount); 
     setIsModalOpen(true);
   };
 
@@ -55,13 +67,13 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
     try {
       const res = await axios.put(`${API_BASE_URL}/api/finance/update/${selectedProject.id}`, {
         paid_amount: paidAmount,
-        role: loggedInUser // Send role to backend for security verification
+        role: loggedInUser 
       });
 
       if (res.data.success) {
-        alert(`Payment Updated! New Balance: $${res.data.balance}`);
+        alert(`Payment Updated! New Balance: ₱${Number(res.data.balance).toLocaleString()}`);
         setIsModalOpen(false);
-        fetchFinanceData(); // Refresh table
+        fetchFinanceData(); 
       }
     } catch (err) {
       console.error("Update error:", err.response?.data || err.message);
@@ -74,26 +86,43 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
       <div className="view-header-tabs">
         <div className="tab active">Financial Management</div>
       </div>
-      <div className="toolbar">
-        <div className="search-container">
+
+      <div className="toolbar" style={{ display: 'flex', alignItems: 'center'}}>
+        
+        {/* ✅ STATUS FILTER (Copied from projects.js logic) */}
+        <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <Filter size={18} style={{ color: '#64748b' }} />
+          <select 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ border: 'none', outline: 'none', fontSize: '14px', color: '#1e293b', cursor: 'pointer', background: 'transparent' }}
+          >
+            {statusOptions.map(col => (
+              <option key={col} value={col}>{col}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* SEARCH BAR */}
+        <div className="search-container" style={{ position: 'relative', flex: 1 }}>
+          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input
             type="text"
-            placeholder="Search by project name, company, or status..."
+            placeholder="Search project name or company..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '10px 40px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
           />
-          {searchQuery ? (
+          {searchQuery && (
             <X
               size={18}
-              className="search-icon clear-icon"
               onClick={() => setSearchQuery('')}
-              style={{ cursor: 'pointer' }}
+              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#94a3b8' }}
             />
-          ) : (
-            <Search size={18} className="search-icon" />
           )}
         </div>
       </div>
+
       <div className="table-container">
         <table className="crm-table">
           <thead>
@@ -108,39 +137,44 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
             </tr>
           </thead>
           <tbody>
-            {filteredProjects.map((proj) => (
-              <tr key={proj.id}>
-                <td className="company-name-cell">
-                  <span className="link-text">{proj.deal_name}</span>
-                </td>
-                <td>{proj.company || '--'}</td>
-                <td>₱{Number(proj.total_amount).toLocaleString()}</td>
-                <td>₱{Number(proj.paid_amount).toLocaleString()}</td>
-                <td style={{ color: proj.due_amount > 0 ? '#dc3545' : '#28a745', fontWeight: 'bold' }}>
-                  ₱{Number(proj.due_amount).toLocaleString()}</td>
-                <td>
-                  <span className={`status-pill ${proj.status?.toLowerCase()}`}>
-                    {proj.status || 'N/A'}
-                  </span>
-                </td>
-
-                {canManageFinance && (
-                  <td style={{ textAlign: 'center' }}>
-                    <button
-                      className="delete-icon-btn"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => handleOpenModal(proj)}
-                    >
-                      <Edit size={18} />
-                    </button>
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((proj) => (
+                <tr key={proj.id}>
+                  <td className="company-name-cell">
+                    <span className="link-text">{proj.deal_name}</span>
                   </td>
-                )}
+                  <td>{proj.company || '--'}</td>
+                  <td>₱{Number(proj.total_amount).toLocaleString()}</td>
+                  <td>₱{Number(proj.paid_amount).toLocaleString()}</td>
+                  <td style={{ color: proj.due_amount > 0 ? '#dc3545' : '#28a745', fontWeight: 'bold' }}>
+                    ₱{Number(proj.due_amount).toLocaleString()}
+                  </td>
+                  <td>
+                    <span className={`status-pill ${proj.status?.toLowerCase().replace(/[\s/]+/g, '-')}`}>
+                      {proj.status || 'N/A'}
+                    </span>
+                  </td>
+
+                  {canManageFinance && (
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        className="delete-icon-btn"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                        onClick={() => handleOpenModal(proj)}
+                      >
+                        <Edit size={18} />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={canManageFinance ? 7 : 6} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                  No projects found matching your criteria.
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -154,7 +188,7 @@ const canManageFinance = loggedInUser === 'admin' || loggedInUser === 'finance';
             
             <form onSubmit={handleUpdatePayment}>
               <div className="form-group">
-                <label>Total Contract: ${selectedProject?.total_amount}</label>
+                <label>Total Contract: ₱{Number(selectedProject?.total_amount).toLocaleString()}</label>
                 <input 
                   type="number" 
                   placeholder="Enter New Paid Amount"
