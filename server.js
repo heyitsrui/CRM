@@ -4,6 +4,7 @@
   const otpGenerator = require("otp-generator");
   const cors = require("cors");
   const mariadb = require("mariadb");
+  const bcrypt = require('bcrypt');
 
   const app = express();
   app.use(express.json({ limit: "50mb" }));
@@ -144,53 +145,64 @@
 
   // ================= REGISTER USER =================
   app.post("/register", async (req, res) => {
-    const { name, email, phone, password, role } = req.body;
-    try {
-      const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
-      if (existing.length > 0)
-        return res.status(400).json({ success: false, message: "Email already registered" });
+  const { name, email, phone, password, role } = req.body;
+  try {
+    const existing = await queryDB("SELECT * FROM users WHERE email = ?", [email]);
+    if (existing.length > 0)
+      return res.status(400).json({ success: false, message: "Email already registered" });
 
-      await queryDB(
-        "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
-        [name, email, phone, password, role]
-      );
+    // HASH THE PASSWORD
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-      res.json({ success: true, message: "User registered successfully" });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+    await queryDB(
+      "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
+      [name, email, phone, hashedPassword, role]
+    );
+
+    res.json({ success: true, message: "User registered successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
   // ================= LOGIN USER =================
   app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-    try {
-      const users = await queryDB(
-        "SELECT id, name, email, password, role, phone, about, avatar FROM users WHERE email = ? AND password = ?", 
-        [email, password]
-      );
-      if (users.length === 0)
-        return res.status(400).json({ success: false, message: "Invalid email or password" });
+  const { email, password } = req.body;
+  try {
+    // Select user by email only
+    const users = await queryDB(
+      "SELECT id, name, email, password, role, phone, about, avatar FROM users WHERE email = ?", 
+      [email]
+    );
+    
+    if (users.length === 0)
+      return res.status(400).json({ success: false, message: "Invalid email or password" });
 
-      const user = users[0];
-      res.json({ 
-        success: true, 
-        user: { 
-          id: user.id, 
-          name: user.name, 
-          email: user.email, 
-          role: user.role,
-          phone: user.phone,
-          about: user.about,
-          avatar: user.avatar
-        } 
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+    const user = users[0];
+
+    // COMPARE THE PASSWORD
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ success: false, message: "Invalid email or password" });
+
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        phone: user.phone,
+        about: user.about,
+        avatar: user.avatar
+      } 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
   // ================= RESET PASSWORD =================
   app.post("/reset-password", async (req, res) => {
@@ -207,8 +219,6 @@
       res.status(500).json({ success: false, message: err.message });
     }
   });
-
-
 
   // ================= USERS =================
   app.get("/api/users", async (req, res) => {
@@ -325,7 +335,6 @@
   });
   
 // ================= PROJECTS / DEALS API =================
-
 app.get("/api/projects", async (req, res) => {
   try {
     // Updated query: Removed address, added closed_date
@@ -517,7 +526,6 @@ app.post("/api/projects/bulk", async (req, res) => {
 });
 
   // ================= CLIENTS =================
-
   // 1. GET corrected to match your new table columns
   app.get("/api/clients", async (req, res) => {
     try {
@@ -605,7 +613,6 @@ app.post('/api/clients/bulk', async (req, res) => {
 });
 
   // ================= TASKS API =================
-
   // Get all tasks
   app.get("/api/tasks", async (req, res) => {
     try {
@@ -744,7 +751,6 @@ app.post('/api/clients/bulk', async (req, res) => {
   });
 
   // ================= PROJECTS API (Updated to match 'projects' table) =================
-
   // 1. GET all projects with their comments
   app.get("/api/projects-detailed", async (req, res) => {
     try {
@@ -785,7 +791,6 @@ app.post('/api/clients/bulk', async (req, res) => {
   });
 
   // ================= FINANCE API =================
-
   // GET all projects for Finance view
   app.get("/api/finance/projects", async (req, res) => {
     try {
@@ -848,7 +853,6 @@ app.get("/api/finance/projects", async (req, res) => {
 });
 
  // ================= COMPANIES API =================
-
 // GET all companies
 app.get('/api/companies', async (req, res) => {
     let conn;
@@ -979,7 +983,6 @@ app.post('/api/clients/bulk', async (req, res) => {
 });
 
 // ================= TIMETREE EVENTS API (MariaDB Optimized) =================
-
 app.get("/api/timetree/users", async (req, res) => {
     try {
         const users = await queryDB("SELECT id, name, email FROM users"); // Adjust table/column names if different
@@ -1065,4 +1068,3 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
