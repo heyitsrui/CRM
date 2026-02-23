@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, MoreVertical, ExternalLink, Calendar, User, Building } from 'lucide-react';
+import { Search, Calendar, User, Filter } from 'lucide-react';
 import axios from 'axios';
 import '../styles/dashboard.css';
 
 const Projects = ({ loggedInUser }) => {
   const [projects, setProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
 
   const API_BASE_URL = `http://${window.location.hostname}:5000`;
+
+  const statusOptions = [
+    'All', 'Lead', 'For Proposal', 'Proposal', 'Purchase Order', 
+    'Site Survey-POC', 'Closed Lost', 'Completed Project', 
+    'Inactive Project', 'Renewal Support', 'Previous Year Project', 'Recovered Project'
+  ];
 
   useEffect(() => {
     fetchProjects();
@@ -28,15 +35,19 @@ const Projects = ({ loggedInUser }) => {
   };
 
   const filteredProjects = useMemo(() => {
-    const term = searchQuery.toLowerCase().trim();
-    return projects.filter(p => 
-      p.deal_name?.toLowerCase().includes(term) ||
-      p.company?.toLowerCase().includes(term) ||
-      p.deal_owner?.toLowerCase().includes(term)
-    );
-  }, [searchQuery, projects]);
+    return projects.filter(p => {
+      const term = searchQuery.toLowerCase().trim();
+      
+      const matchesSearch = !term || 
+        p.deal_name?.toLowerCase().includes(term) ||
+        p.deal_owner?.toLowerCase().includes(term);
+        
+      const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchQuery, statusFilter, projects]);
 
-  // Helper to get CSS class for the status ENUM
   const getStatusClass = (status) => {
     if (!status) return 'badge';
     return status.toLowerCase().replace(/\s+/g, '-');
@@ -44,48 +55,50 @@ const Projects = ({ loggedInUser }) => {
 
   return (
     <div className="view-container">
-      {/* Header Section */}
       <div className="view-header-tabs">
-        <div className="tab active">Project Pipeline ({filteredProjects.length})</div>
+        <div className="tab active">Project Sheets ({filteredProjects.length})</div>
       </div>
 
       {/* Toolbar */}
-      <div className="toolbar">
-        <div className="search-container">
+      <div className="toolbar" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+        
+        <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <Filter size={18} style={{ color: '#64748b' }} />
+          <select 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', outline: 'none' }}
+          >
+            {statusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+        </div>
+
+        <div className="search-container" style={{ flex: 1 }}>
           <input
             type="text"
-            placeholder="Search by project, company, or owner..."
+            placeholder="Search by project or owner..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Search size={18} className="search-icon" />
         </div>
-        
-        <div className="header-actions">
-          <button className="add-company-btn">
-            <Plus size={18} style={{ marginRight: '8px' }} />
-            New Project
-          </button>
-        </div>
       </div>
 
-      {/* Projects Table */}
+      {/* Projects Table - Columns adjusted */}
       <div className="table-container">
         <table className="crm-table">
           <thead>
             <tr>
               <th>Deal Name</th>
               <th>Status</th>
-              <th>Company</th>
               <th>Owner</th>
               <th>Total Amount</th>
               <th>Closed Date</th>
-              <th style={{ textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>Loading projects...</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>Loading projects...</td></tr>
             ) : filteredProjects.length > 0 ? (
               filteredProjects.map((proj) => (
                 <tr key={proj.id}>
@@ -102,12 +115,6 @@ const Projects = ({ loggedInUser }) => {
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Building size={14} color="#666" />
-                      {proj.company || '--'}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <User size={14} color="#666" />
                       {proj.deal_owner || 'Unassigned'}
                     </div>
@@ -121,15 +128,10 @@ const Projects = ({ loggedInUser }) => {
                       {proj.closed_date ? new Date(proj.closed_date).toLocaleDateString() : 'TBD'}
                     </div>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
-                      <MoreVertical size={18} />
-                    </button>
-                  </td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>No projects found.</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>No projects found.</td></tr>
             )}
           </tbody>
         </table>
