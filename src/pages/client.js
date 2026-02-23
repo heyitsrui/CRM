@@ -332,7 +332,7 @@ const Client = ({ userRole }) => {
 
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={toggleModal}>Cancel</button>
-                <button type="submit" className="btn-primary">Create Client</button>
+                <button type="submit" className="add-company-btn">Create Client</button>
               </div>
             </form>
           </div>
