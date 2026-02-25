@@ -1,98 +1,55 @@
-CREATE TABLE IF NOT EXISTS otp_table (
-    email VARCHAR(255) PRIMARY KEY,
-    otp VARCHAR(10) NOT NULL,
-    expires_at DATETIME NOT NULL
+CREATE TABLE `activities` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`title` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`description` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE
 );
 
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    phone VARCHAR(20) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'manager', 'executive', 'finance', 'viewer') NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE `clients` (
+	`record_id` BIGINT(20) NOT NULL,
+	`first_name` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`last_name` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`email` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`phone` VARCHAR(30) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`contact_owner` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`assoc_company` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`lead_status` ENUM('New','In Progress','Connected','Open Deal','Open','Attempted to Contact') NULL DEFAULT 'New' COLLATE 'utf8mb4_uca1400_ai_ci',
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`legacy_id` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	PRIMARY KEY (`record_id`) USING BTREE,
+	UNIQUE INDEX `email` (`email`) USING BTREE
 );
 
-CREATE TABLE projects (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255),
-    status ENUM('Lead', 'Bidding', 'Signature', 'Hold', 'Approved'),
-    paid_amount DECIMAL(15, 2) DEFAULT 0.00,
-    due_amount DECIMAL(15, 2) DEFAULT 0.00
-);
-CREATE TABLE activities (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255),
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
-ALTER TABLE projects
-ADD COLUMN client VARCHAR(255),
-ADD COLUMN address VARCHAR(255);
-
-ALTER TABLE projects
--- rename existing columns
-CHANGE COLUMN title deal_name VARCHAR(255) NOT NULL,
-CHANGE COLUMN client deal_owner VARCHAR(255) DEFAULT '',
-
--- add new columns
-ADD COLUMN description TEXT AFTER deal_owner,
-ADD COLUMN contact VARCHAR(255) DEFAULT '' AFTER description,
-ADD COLUMN company VARCHAR(255) DEFAULT '' AFTER contact,
-ADD COLUMN amount DECIMAL(15,2) DEFAULT 0 AFTER company;
-
-
-CREATE TABLE company (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    company_name VARCHAR(255) NOT NULL,
-    company_owner VARCHAR(255),
-    types VARCHAR(100),
-    email VARCHAR(255),
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE `company` (
+	`record_id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+	`company_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`company_owner` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`phone` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`city` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`country` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`industry` VARCHAR(255) NOT NULL DEFAULT 'Other' COLLATE 'utf8mb4_uca1400_ai_ci',
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`record_id`) USING BTREE
 );
 
-CREATE TABLE clients (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    clientName VARCHAR(255) NOT NULL,
-    companyName VARCHAR(255),
-    email VARCHAR(255) UNIQUE,
-    salesRep VARCHAR(255),
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE `event_chats` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`event_id` INT(11) NOT NULL,
+	`sender_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`message_text` TEXT NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`sent_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `event_id` (`event_id`) USING BTREE,
+	CONSTRAINT `event_chats_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `timetree_events` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
 );
 
-ALTER TABLE users ADD COLUMN about TEXT;
-ALTER TABLE users ADD COLUMN avatar TEXT;
-
-
-CREATE TABLE tasks (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    title VARCHAR(255) NOT NULL,
-    priority ENUM('High', 'Medium', 'Low') DEFAULT 'Medium',
-    status ENUM('Pending', 'Completed') DEFAULT 'Pending',
-    deadline DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE `otp_table` (
+	`email` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`otp` VARCHAR(10) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`expires_at` DATETIME NOT NULL,
+	PRIMARY KEY (`email`) USING BTREE
 );
-
-CREATE TABLE project_comments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    project_id INT NOT NULL,
-    user_name VARCHAR(255),
-    comment_text TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-
-INSERT INTO tasks (title, priority, user_id, status) 
-VALUES ('Test Task', 'Medium', 1, 'Pending');
-
-
-ALTER TABLE users MODIFY COLUMN avatar LONGTEXT;
-
-
 
 CREATE TABLE `projects` (
 	`id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -108,11 +65,44 @@ CREATE TABLE `projects` (
 	`closed_date` DATE NULL DEFAULT NULL,
 	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
 	PRIMARY KEY (`id`) USING BTREE
-)
-COLLATE='utf8mb4_uca1400_ai_ci'
-ENGINE=InnoDB
-AUTO_INCREMENT=10041
-;
+);
+
+CREATE TABLE `project_attachments` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`project_id` INT(11) NOT NULL,
+	`file_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`file_path` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`uploaded_by` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `project_id` (`project_id`) USING BTREE,
+	CONSTRAINT `1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
+);
+
+CREATE TABLE `project_comments` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`project_id` INT(11) NOT NULL,
+	`user_name` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`comment_text` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `project_id` (`project_id`) USING BTREE,
+	CONSTRAINT `1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
+);
+
+CREATE TABLE `tasks` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`user_id` INT(11) NULL DEFAULT NULL,
+	`title` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`priority` ENUM('High','Medium','Low') NULL DEFAULT 'Medium' COLLATE 'utf8mb4_uca1400_ai_ci',
+	`status` ENUM('Pending','Completed') NULL DEFAULT 'Pending' COLLATE 'utf8mb4_uca1400_ai_ci',
+	`deadline` DATE NULL DEFAULT NULL,
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`description` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `user_id` (`user_id`) USING BTREE,
+	CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
+);
 
 CREATE TABLE `timetree_events` (
 	`id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -123,122 +113,18 @@ CREATE TABLE `timetree_events` (
 	`deadline_date` DATE NULL DEFAULT NULL,
 	`deadline_time` TIME NULL DEFAULT NULL,
 	PRIMARY KEY (`id`) USING BTREE
-)
-COLLATE='utf8mb4_uca1400_ai_ci'
-ENGINE=InnoDB
-AUTO_INCREMENT=23
-;
+);
 
-CREATE TABLE `event_chats` (
+CREATE TABLE `users` (
 	`id` INT(11) NOT NULL AUTO_INCREMENT,
-	`event_id` INT(11) NOT NULL,
-	`sender_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
-	`message_text` TEXT NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
-	`sent_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`email` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`phone` VARCHAR(20) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`password` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`role` ENUM('admin','manager','executive','finance','viewer') NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`about` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`avatar` LONGTEXT NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
 	PRIMARY KEY (`id`) USING BTREE,
-	INDEX `event_id` (`event_id`) USING BTREE,
-	CONSTRAINT `event_chats_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `timetree_events` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
-)
-COLLATE='utf8mb4_uca1400_ai_ci'
-ENGINE=InnoDB
-AUTO_INCREMENT=14
-;
-
-CREATE TABLE company (
-    record_id INT(11) NOT NULL AUTO_INCREMENT,
-    company_name VARCHAR(255) NOT NULL,
-    company_owner VARCHAR(255) DEFAULT NULL,
-    phone VARCHAR(20) DEFAULT NULL,
-    city VARCHAR(255) DEFAULT NULL,
-    country VARCHAR(255) DEFAULT NULL,
-    industry ENUM ('Accounting',
-    'Airlines/Aviation',
-    'Apparel & Fashion',
-    'Automotive',
-    'Banking',
-    'Broadcast Media',
-    'Building Materials',
-    'Business Supplies and Equipment',
-    'Capital Markets',
-    'Chemicals',
-    'Civil Engineering',
-    'Computer Hardware',
-    'Computer Networking',
-    'Computer Software',
-    'Construction',
-    'Consumer Electronics',
-    'Consumer Goods',
-    'Consumer Services',
-    'Defense & Space',
-    'Education Management',
-    'Electrical/Electronic Manufacturing',
-    'Entertainment',
-    'Financial Services',
-    'Food & Beverages',
-    'Food Production',
-    'Gambling & Casinos',
-    'Government Administration',
-    'Higher Education',
-    'Hospital & Health Care',
-    'Hospitality',
-    'Individual & Family Services',
-    'Information Technology and Services',
-    'Insurance',
-    'Legal Services',
-    'Leisure, Travel & Tourism',
-    'Logistics and Supply Chain',
-    'Machinery',
-    'Management Consulting',
-    'Maritime',
-    'Mechanical or Industrial Engineering',
-    'Mining & Metals',
-    'Oil & Energy',
-    'Packaging and Containers',
-    'Pharmaceuticals',
-    'Photography',
-    'Printing',
-    'Professional Training & Coaching',
-    'Publishing',
-    'Real Estate',
-    'Renewables & Environment',
-    'Restaurants',
-    'Retail',
-    'Telecommunications',
-    'Transportation/Trucking/Railroad',
-    'Utilities',
-    'Venture Capital & Private Equity')NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (record_id)
-);
-
-ALTER TABLE company MODIFY industry VARCHAR(255) NOT NULL DEFAULT 'Other';
-ALTER TABLE company MODIFY phone VARCHAR(50) NULL;
-ALTER TABLE company MODIFY record_id BIGINT NOT NULL AUTO_INCREMENT;
-
-CREATE TABLE clients (
-    record_id INT AUTO_INCREMENT PRIMARY KEY,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(30) DEFAULT NULL,
-    contact_owner VARCHAR(255),
-    assoc_company VARCHAR(255),
-    lead_status ENUM ('New', 'In Progress', 'Connected', 'Open Deal', 'Open', 'Attempted to Contact') DEFAULT 'New',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE clients 
-ADD COLUMN legacy_id VARCHAR(100) DEFAULT NULL;
-
-ALTER TABLE clients 
-MODIFY record_id BIGINT NOT NULL;
-
-CREATE TABLE project_attachments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    project_id INT NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
-    file_path VARCHAR(255) NOT NULL,
-    uploaded_by VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+	UNIQUE INDEX `email` (`email`) USING BTREE
 );
