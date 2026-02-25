@@ -205,7 +205,7 @@ const Company = ({ userRole }) => {
         </div>
       </div>
 
-      <div className="toolbar" style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="toolbar" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
         {/* ✅ INDUSTRY FILTER DROPDOWN */}
         <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <Filter size={18} style={{ color: '#64748b' }} />
