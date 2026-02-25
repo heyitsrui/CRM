@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Lock, Bell, CheckCheck, LogOut } from "lucide-react";
+import { User, Lock, Bell, CheckCheck, Menu } from "lucide-react";
 
-const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
+const TopNav = ({ loggedInUser, onNavigate, onLogout, toggleSidebar }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   
-  // ✅ INITIALIZE STATE FROM LOCALSTORAGE
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem("app_notifications");
     return saved ? JSON.parse(saved) : [];
@@ -16,12 +16,11 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
 
   const DEFAULT_AVATAR = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
 
-  // ✅ SAVE TO LOCALSTORAGE WHENEVER NOTIFS CHANGE
   useEffect(() => {
-    localStorage.setItem("app_notifications", JSON.stringify(notifications));
-  }, [notifications]);
+    // Handle responsive state
+    const handleResize = () => setIsMobile(window.innerWidth < 600);
+    window.addEventListener("resize", handleResize);
 
-  useEffect(() => {
     const handleNewNotif = (event) => {
       setNotifications((prev) => [event.detail, ...prev]);
     };
@@ -29,11 +28,9 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
     window.addEventListener("new-notification", handleNewNotif);
 
     const handleClickOutside = (event) => {
-      // Logic for Notification Dropdown
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setIsNotifOpen(false);
       }
-      // Logic for Profile Dropdown
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileOpen(false);
       }
@@ -41,10 +38,15 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
+      window.removeEventListener("resize", handleResize);
       window.removeEventListener("new-notification", handleNewNotif);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("app_notifications", JSON.stringify(notifications));
+  }, [notifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -56,21 +58,30 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
     if (window.confirm("Clear all notifications?")) setNotifications([]);
   };
 
+  // Logic for dynamic mobile dropdown styling
+  const dropdownStyle = isMobile 
+    ? { ...styles.dropdown, position: "fixed", top: "60px", left: "5%", width: "90%", right: "5%" }
+    : styles.dropdown;
+
   return (
     <header className="top-nav" style={styles.header}>
+      <button 
+        className="hamburger-btn" 
+        onClick={toggleSidebar}
+        style={{ marginRight: '15px', background: 'none', border: 'none', cursor: 'pointer' }}
+      >
+        <Menu size={24} color="#333" />
+      </button>
       <div style={styles.rightSection}>
-        
         {/* --- NOTIFICATION DROPDOWN --- */}
         <div className="notif-block" ref={notifRef} style={styles.relative}>
           <div className="notif-icon" onClick={() => setIsNotifOpen(!isNotifOpen)} style={styles.iconWrapper}>
             <Bell size={24} color="#555" />
-            {unreadCount > 0 && (
-              <span className="badge" style={styles.badge}>{unreadCount}</span>
-            )}
+            {unreadCount > 0 && <span className="badge" style={styles.badge}>{unreadCount}</span>}
           </div>
 
           {isNotifOpen && (
-            <div className="notif-dropdown" style={styles.dropdown}>
+            <div className="notif-dropdown" style={dropdownStyle}>
               <div style={styles.dropdownHeader}>
                 <span style={{ fontWeight: "600" }}>Notifications</span>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -79,9 +90,7 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
                       <CheckCheck size={14} /> Read All
                     </button>
                   )}
-                  <button onClick={clearAll} style={{...styles.markReadBtn, color: '#ef4444'}}>
-                    Clear
-                  </button>
+                  <button onClick={clearAll} style={{...styles.markReadBtn, color: '#ef4444'}}>Clear</button>
                 </div>
               </div>
               <div style={styles.scrollArea}>
@@ -103,25 +112,16 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
         {/* --- USER PROFILE DROPDOWN --- */}
         <div className="user-block" ref={profileRef} style={styles.userBlock}>
           <div className="user-info" onClick={() => setIsProfileOpen(!isProfileOpen)} style={styles.userInfo}>
-            <span className="user-name" style={styles.userName}>
-              {loggedInUser?.name || "User"}
-            </span>
+            <span className="user-name" style={styles.userName}>{loggedInUser?.name || "User"}</span>
             <span className="user-email" style={styles.userEmail}>{loggedInUser?.email}</span>
           </div>
           
           <div className="user-avatar" onClick={() => setIsProfileOpen(!isProfileOpen)} style={styles.avatarWrapper}>
             <img 
-              src={
-                loggedInUser?.avatar && (loggedInUser.avatar.includes("data:image") || loggedInUser.avatar.startsWith("http"))
-                  ? loggedInUser.avatar 
-                  : DEFAULT_AVATAR
-              }
+              src={loggedInUser?.avatar && (loggedInUser.avatar.includes("data:image") || loggedInUser.avatar.startsWith("http")) ? loggedInUser.avatar : DEFAULT_AVATAR}
               alt="User" 
               style={styles.avatarImg}
-              onError={(e) => {
-                e.target.onerror = null; 
-                e.target.src = DEFAULT_AVATAR;
-              }}
+              onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_AVATAR; }}
             />
           </div>
 
@@ -141,7 +141,6 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout }) => {
   );
 };
 
-// --- STYLES ---
 const styles = {
   header: { display: "flex", justifyContent: "flex-end", padding: "12px 30px", background: "#fff", borderBottom: "1px solid #eee", alignItems: "center" },
   rightSection: { display: "flex", alignItems: "center", gap: "25px" },
