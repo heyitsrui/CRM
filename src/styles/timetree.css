@@ -27,7 +27,8 @@ html, body {
     flex-direction: column;
     gap: 20px;
     flex-shrink: 0;
-    overflow: hidden; 
+    /* FIX: Changed to auto so you can scroll down to see every event/date */
+    overflow-y: auto; 
 }
 
 .btn-create {
@@ -48,12 +49,15 @@ html, body {
     background-color: #f8f9fa;
 }
 
-/* Container for S M T W T F S */
+/* --- MINI CALENDAR FIXES --- */
+/* Integrated: Forces S M T W T F S and Numbers to align perfectly */
 .mini-cal-days-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
     text-align: center;
     margin-bottom: 8px;
+    width: 100%;
+    gap: 0;
 }
 
 .mini-day-name {
@@ -61,14 +65,17 @@ html, body {
     color: #70757a;
     font-weight: 500;
     text-transform: uppercase;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-/* The Grid for the numbers 1-28/31 */
 .mini-cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
     text-align: center;
-    gap: 2px;
+    gap: 0; /* Removing gap prevents drift on small mobile screens */
+    width: 100%;
 }
 
 .calendar-month-label {
@@ -187,7 +194,7 @@ html, body {
     background: white;
     z-index: 5;
     border-right: 1px solid #dadce0;
-    padding-top: 20px; /* Added space to push 0:00 down */
+    padding-top: 20px; 
 }
 
 .hour-label-cell {
@@ -208,7 +215,7 @@ html, body {
     flex: 1;
     position: relative;
     background-color: white;
-    padding-top: 20px; /* Match the sidebar padding to keep the grid aligned */
+    padding-top: 20px; 
 }
 
 .day-column {
@@ -234,6 +241,9 @@ html, body {
     transition: transform 0.1s, box-shadow 0.1s;
     cursor: pointer;
     overflow: hidden;
+    align-self: flex-start;
+    width: 90%;
+    margin: 0 auto;
 }
 
 .event-card:hover {
@@ -313,7 +323,7 @@ html, body {
     background-color: #f0f2f5;
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Increased gap for Messenger look */
+    gap: 12px; 
     scrollbar-width: thin;
 }
 
@@ -408,7 +418,7 @@ html, body {
 /* --- Sidebar Event List --- */
 .event-list-sidebar {
     flex: 1;
-    overflow-y: auto; /* Vertical scroll ON */
+    overflow-y: auto; 
     overflow-x: hidden; 
     padding-top: 10px;
     border-top: 1px solid #eee;
@@ -441,8 +451,9 @@ html, body {
     margin-bottom: 12px;
     border-radius: 4px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
 }
 
 .sidebar-event-info strong {
@@ -461,6 +472,7 @@ html, body {
     font-weight: 500;
     opacity: 0;
     transition: opacity 0.2s;
+    align-self: flex-end;
 }
 
 .sidebar-event-card:hover .btn-delete {
@@ -484,6 +496,7 @@ html, body {
 .sidebar-event-card span {
     font-size: 11px;
     color: #70757a;
+    white-space: nowrap;
 }
 
 /* --- Modal --- */
@@ -556,8 +569,9 @@ html, body {
 
 /* Mini Calendar Styles */
 .mini-calendar {
-    padding: 15px;
-    border-bottom: 1px solid #eee;
+    width: 100%;
+    padding: 10px 0;
+    box-sizing: border-box;
 }
 
 .mini-cal-header h4 {
@@ -568,13 +582,14 @@ html, body {
 
 .mini-day-num {
     font-size: 12px;
-    padding: 5px;
+    aspect-ratio: 1/1; /* Integrated from fix */
+    width: 28px; /* Standardize size for alignment */
     cursor: pointer;
     border-radius: 50%;
-    aspect-ratio: 1/1;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: 2px auto; /* Centering fix */
 }
 
 .mini-day-num:hover {
@@ -643,4 +658,136 @@ html, body {
 
 .user-toggle option {
     color: black;
+}
+
+/* ============================================================
+    MOBILE VIEW & FIXES (INTEGRATED)
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .tt-container {
+        overflow-x: hidden; 
+        display: flex;
+        width: 100%;
+    }
+
+    .tt-sidebar-left {
+        width: 30%; 
+        min-width: 110px; 
+        padding: 8px 4px; /* Integrated: reduced padding for mobile */
+        gap: 10px;
+        font-size: 11px;
+        flex-shrink: 1; 
+    }
+
+    /* MINI CALENDAR ALIGNMENT LOCK */
+    .mini-cal-days-header, 
+    .mini-cal-grid {
+        display: grid !important;
+        grid-template-columns: repeat(7, 1fr) !important;
+        width: 100% !important;
+        gap: 0 !important;
+    }
+
+    .mini-day-name {
+        font-size: 11px;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .mini-day-num {
+        width: 22px;
+        height: 22px;
+        font-size: 10px;
+    }
+
+    .event-list-sidebar {
+        padding: 5px;
+    }
+
+    .sidebar-event-card {
+        padding: 8px !important;
+        gap: 4px !important;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .sidebar-event-info strong {
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sidebar-event-info span {
+        font-size: 9px !important;
+    }
+
+    .btn-delete {
+        opacity: 1 !important; 
+        align-self: flex-end; 
+        padding: 3px 8px !important;
+        font-size: 9px;
+        margin-top: 2px !important;
+    }
+
+    .tt-main {
+        flex: 1;
+        min-width: 0; 
+    }
+
+    .day-num {
+        font-size: 14px;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+    }
+
+    .day-name {
+        font-size: 8px;
+    }
+
+    .time-labels-column {
+        width: 30px;
+    }
+
+    .hour-label-cell {
+        font-size: 8px;
+        padding-right: 2px;
+    }
+
+    .event-card {
+        padding: 2px 4px !important;
+        width: 95% !important;
+    }
+
+    .event-title {
+        font-size: 9px;
+    }
+
+    .chat-popup-overlay {
+        width: 180px !important;
+        height: 250px !important; 
+        right: 5px;
+        bottom: 5px;
+        z-index: 2000;
+    }
+}
+
+@media (max-width: 480px) {
+    .tt-sidebar-left {
+        width: 80px;
+        padding: 4px;
+    }
+    .day-num {
+        font-size: 11px;
+        width: 22px;
+        height: 22px;
+        line-height: 22px;
+    }
+    .sidebar-event-info span {
+        display: none !important;
+    }
 }
