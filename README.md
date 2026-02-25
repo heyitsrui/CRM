@@ -5,7 +5,6 @@ npm install react-router-dom
 npm install nodemailer
 npm install axios
 npm install --save-dev @babel/preset-env @babel/preset-react
-
 npm install chart.js react-chartjs-2
 
 FOR OTP SET-UP
@@ -18,5 +17,6 @@ FOR DATABASE
 npm install express mariadb cors
 
 npm install xlsx
-
 npm install bcrypt
+npm install multer
+
