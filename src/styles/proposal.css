@@ -1,3 +1,4 @@
+
 .proposal-page {
   padding: 20px;
   max-width: 1600px;
@@ -63,6 +64,10 @@
   overflow-x: auto;
   padding-bottom: 20px;
   scrollbar-width: thin;
+  overflow-y: hidden; /* Prevent double scrollbars */
+  padding-bottom: 10px;
+  max-height: calc(100vh - 150px); 
+  display: flex;
 }
 
 .kanban-table {
@@ -70,6 +75,7 @@
   gap: 16px;
   width: max-content;
   min-height: 70vh;
+  align-items: flex-start;
 }
 
 /* COLUMN */
@@ -81,6 +87,7 @@
   flex-direction: column;
   overflow: visible !important;
   border: 1px solid #e9ecef;
+  max-height: calc(100vh - 180px); /* Keeps the column contained in the view */
 }
 
 .column-header {
@@ -102,6 +109,8 @@
   gap: 12px;
   flex-grow: 1;
   overflow: visible !important;
+  overflow-y: auto !important; 
+  scrollbar-width: none; /* Clean look for Firefox */
 }
 
 /* CARD */
@@ -406,4 +415,54 @@
 .readonly-card:hover {
   border-color: #e5e7eb;
   transform: none !important; /* Disable hover lift in read-only */
+}
+
+/* --- MOBILE RESPONSIVENESS --- */
+@media (max-width: 768px) {
+  .proposal-page {
+    padding: 10px;
+  }
+
+  .proposal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap; /* Allows buttons to wrap on tiny screens */
+  }
+
+  .search-input {
+    width: 100%;
+    order: 3; /* Move search below the action buttons on mobile */
+  }
+
+  .kanban-wrapper {
+    /* On mobile, we change to vertical scrolling for better touch navigation */
+    overflow-x: hidden;
+    max-height: none;
+  }
+
+  .kanban-table {
+    flex-direction: column;
+    width: 100%;
+    gap: 20px;
+  }
+
+  .column {
+    width: 100%;
+    max-height: 500px; /* Limit height so one column doesn't take the whole screen */
+  }
+  
+  .modal-content {
+    width: 95%;
+    padding: 15px;
+  }
+  
+  .input-row {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
