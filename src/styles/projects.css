@@ -257,3 +257,73 @@
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- MOBILE RESPONSIVENESS ADDITIONS --- */
+
+@media (max-width: 768px) {
+  /* Stack the header: Title on top, Actions below */
+  .projects-page-wrapper .proposal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  /* Make filter and search take full width */
+  .projects-page-wrapper .header-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .projects-page-wrapper .filter-wrapper,
+  .projects-page-wrapper .search-container,
+  .projects-page-wrapper .search-input {
+    width: 100% !important; /* Forces search bar to fill the screen */
+  }
+
+  /* Project Card Adjustments */
+  .projects-page-wrapper .white-project-card {
+    flex-direction: column; /* Stacks the content inside the card */
+    padding: 15px;
+  }
+
+  /* Ensure the title and badge row looks good on small screens */
+  .projects-page-wrapper .card-details div[style*="display: flex"] {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+
+  .projects-page-wrapper .status-badge {
+    align-self: flex-start; /* Keeps badge aligned left on mobile */
+  }
+
+  /* Adjust Meta Row (Company, Owner, Amount) */
+  .projects-page-wrapper .meta-row {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  /* Expanded Details Grid: switch from columns to a single list */
+  .projects-page-wrapper .details-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Discussion/Comment Input */
+  .projects-page-wrapper .comment-input-row {
+    flex-direction: row; /* Keep input and button side-by-side */
+  }
+}
+
+@media (max-width: 480px) {
+  .projects-page-wrapper .projects-container {
+    padding: 10px; /* Less padding on very small phones */
+  }
+
+  .projects-page-wrapper .section-title {
+    font-size: 1.2rem;
+  }
+}
