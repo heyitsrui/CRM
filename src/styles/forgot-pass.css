@@ -391,3 +391,22 @@
     gap: 5px;
   }
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 1100px) {
+  .fp-container-inner {
+    flex-direction: column;
+    padding: 100px 20px;
+  }
+  .fp-left {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+  .fp-text h1 {
+    font-size: 3rem;
+  }
+  .header-nav {
+    padding: 20px;
+  }
+}
+
