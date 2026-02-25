@@ -721,59 +721,40 @@ app.post('/api/clients/bulk', async (req, res) => {
   });
 
   // ================= PROJECT COMMENTS API =================
-  app.get("/api/projects-detailed", async (req, res) => {
-    try {
-      const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
-      const projectsWithComments = await Promise.all(projects.map(async (proj) => {
-        const comments = await queryDB(
-          "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
-          [proj.id]
-        );
-        return { ...proj, comments: comments || [] };
-      }));
-      res.json({ success: true, projects: projectsWithComments });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  app.post("/api/projects/:id/comments", async (req, res) => {
-    const { id } = req.params;
-    const { user_name, comment_text } = req.body;
-    try {
-      await queryDB(
-        "INSERT INTO project_comments (project_id, user_name, comment_text) VALUES (?, ?, ?)",
-        [id, user_name, comment_text]
-      );
-      res.json({ success: true, message: "Comment added to project" });
-    } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // ================= PROJECTS API (Updated to match 'projects' table) =================
+ 
+  // ================= PROJECT COMMENTS API =================
   // 1. GET all projects with their comments
-  app.get("/api/projects-detailed", async (req, res) => {
-    try {
-      // Changed table name from 'proposals' to 'projects'
-      const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
-      
-      const projectsWithComments = await Promise.all(projects.map(async (proj) => {
-        // Fetches comments linked to the project ID
-        const comments = await queryDB(
-          "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
-          [proj.id]
-        );
-        return { ...proj, comments: comments || [] };
-      }));
+    app.get("/api/projects-detailed", async (req, res) => {
+      try {
+        const projects = await queryDB("SELECT * FROM projects ORDER BY created_at DESC");
+        
+        // We name the variable 'projectsWithDetails' here...
+        const projectsWithDetails = await Promise.all(projects.map(async (proj) => {
+          const comments = await queryDB(
+            "SELECT * FROM project_comments WHERE project_id = ? ORDER BY created_at ASC", 
+            [proj.id]
+          );
+          
+          const attachments = await queryDB(
+            "SELECT * FROM project_attachments WHERE project_id = ?",
+            [proj.id]
+          );
 
-      // success: true and projects: [...] matches your frontend's requirements
-      res.json({ success: true, projects: projectsWithComments });
-    } catch (err) {
-      console.error("Fetch Projects Error:", err);
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
+          return { 
+            ...proj, 
+            comments: comments || [], 
+            attachments: attachments || [] 
+          };
+        }));
+
+        // ...so we must use 'projectsWithDetails' here too!
+        res.json({ success: true, projects: projectsWithDetails });
+
+      } catch (err) {
+        console.error("Fetch Projects Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+      }
+    });
 
   // 2. POST a new comment to a specific project
   app.post("/api/projects/:id/comments", async (req, res) => {
@@ -790,6 +771,38 @@ app.post('/api/clients/bulk', async (req, res) => {
       res.status(500).json({ success: false, error: err.message });
     }
   });
+
+      // 2. POST: Upload File
+    app.post('/api/projects/:id/attachments', upload.single('file'), async (req, res) => {
+      const { id } = req.params;
+      const { uploaded_by } = req.body;
+      const { originalname, filename } = req.file;
+      try {
+        await queryDB(
+          "INSERT INTO project_attachments (project_id, file_name, file_path, uploaded_by) VALUES (?, ?, ?, ?)",
+          [id, originalname, filename, uploaded_by]
+        );
+        res.json({ success: true });
+      } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+      }
+    });
+
+    // 3. DELETE: Remove File
+    app.delete('/api/attachments/:id', async (req, res) => {
+      const { id } = req.params;
+      try {
+        const rows = await queryDB("SELECT file_path FROM project_attachments WHERE id = ?", [id]);
+        if (rows.length > 0) {
+          const filePath = path.join(__dirname, 'uploads', rows[0].file_path);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath); // Delete actual file
+          await queryDB("DELETE FROM project_attachments WHERE id = ?", [id]);
+          res.json({ success: true });
+        }
+      } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+      }
+    });
 
   // ================= FINANCE API =================
   // GET all projects for Finance view
@@ -1069,3 +1082,4 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
