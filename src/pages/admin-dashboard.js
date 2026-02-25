@@ -39,6 +39,13 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 /* --- Sub-Component: Dashboard Overview --- */
 const DashboardOverview = ({ stats, tasks }) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   // Data preparation for the Doughnut Chart
   const chartData = {
     labels: ["Lead", "Proposal", "Purchase Order", "Site Survey-POC", "Closed Lost", 
@@ -82,13 +89,13 @@ const DashboardOverview = ({ stats, tasks }) => {
     plugins: {
       legend: {
         display: true,
-        position: "right",
+        position: isMobile ? "bottom" : "right",
         labels: {
           usePointStyle: true,
-          padding: 20,
+          padding: 10,
           font: {
             family: "'Poppins', sans-serif",
-            size: 12,
+            size: isMobile ? 10 : 12,
           },
         },
       },
@@ -172,7 +179,7 @@ const DashboardOverview = ({ stats, tasks }) => {
       </div>
 
       {/* Money Stats */}
-      <div className="money-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginTop: '20px' }}>
+      <div className="money-grid" style={{ marginTop: '20px' }}>
         <div className="money-card" style={{ borderLeft: '5px solid #22c55e' }}>
           <DollarSign className="money-icon" style={{ color: '#22c55e' }} />
           <div>
@@ -245,6 +252,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [userTasks, setUserTasks] = useState([]); // Replaced activities state
   const [loggedInUser, setLoggedInUser] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -342,7 +350,22 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-layout">
+      
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0,0,0,0.5)', 
+            zIndex: 999
+          }}
+        />
+      )}
+
       <Sidebar 
+        className={isSidebarOpen ? 'open' : ''}
         activeIndex={activeIndex} 
         setActiveIndex={setActiveIndex} 
         onLogout={handleLogout}
@@ -352,7 +375,8 @@ export default function Dashboard() {
       <main className="main-area">
         <TopNav 
           loggedInUser={loggedInUser} 
-          onNavigate={setActiveIndex} 
+          onNavigate={setActiveIndex}
+          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
         
         <div className="view-container">
