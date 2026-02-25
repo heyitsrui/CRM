@@ -1,10 +1,14 @@
-  require("dotenv").config();
+ require("dotenv").config();
   const express = require("express");
   const nodemailer = require("nodemailer");
   const otpGenerator = require("otp-generator");
   const cors = require("cors");
   const mariadb = require("mariadb");
   const bcrypt = require('bcrypt');
+
+  const multer = require('multer');
+  const path = require('path');
+  const fs = require('fs');
 
   const app = express();
   app.use(express.json({ limit: "50mb" }));
@@ -15,6 +19,23 @@
   BigInt.prototype.toJSON = function() {
     return this.toString();
   };
+
+    // Create storage logic
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = './uploads';
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir); // Auto-create folder
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + "-" + file.originalname); // Unique filename
+    }
+  });
+  const upload = multer({ storage });
+
+  // Serve static files (Essential for opening files in browser)
+  app.use('/uploads', express.static('uploads'));
+  
 
   // ================= MariaDB Connection =================
   const pool = mariadb.createPool({
@@ -1082,4 +1103,5 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
