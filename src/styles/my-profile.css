@@ -196,6 +196,7 @@ body {
   flex-wrap: wrap;
   gap: 15px;
   margin-top: 10px;
+  justify-content: center;
 }
 
 .permission-pill {
@@ -238,3 +239,49 @@ body {
 /* UTILITY CLASSES */
 .font-light { font-weight: 400; color: #555; }
 .uppercase-text { text-transform: uppercase; }
+
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 15px;
+  }
+
+  .profile-card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .profile-header-row {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .avatar-section {
+    width: 100%;
+  }
+
+  /* Reposition the camera icon for mobile */
+  .upload-icon-label {
+    margin-top: -40px;
+    margin-left: 80px; 
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr; /* Stack labels and values */
+    row-gap: 5px;
+  }
+
+  .profile-name {
+    font-size: 24px;
+    margin-top: 10px;
+  }
+
+  .edit-btn {
+    width: 100%;
+  }
+
+  .permissions-list {
+    justify-content: center;
+  }
+}
