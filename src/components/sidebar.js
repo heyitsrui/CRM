@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
-const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
+const Sidebar = ({ activeIndex, setActiveIndex, onLogout, className }) => {
   const [openMenus, setOpenMenus] = useState({});
 
   const menuItems = [ 
@@ -56,7 +56,7 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${className}`}>
       <div className="logo-section">
         <img src="vtic.webp" alt="Visible Logo" />
       </div>
