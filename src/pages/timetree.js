@@ -24,25 +24,69 @@ const TimeTree = () => {
     const [activeEvent, setActiveEvent] = useState(null);
     const [newMessage, setNewMessage] = useState("");
     const [showModal, setShowModal] = useState(false);
-    const [currentUser, setCurrentUser] = useState(""); 
+    const [showFullEvents, setShowFullEvents] = useState(false);
+    const [currentUser, setCurrentUser] = useState("");
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [showSidebar, setShowSidebar] = useState(window.innerWidth > 768);
+    const [showMobileCal, setShowMobileCal] = useState(false);
+    const [editingChatId, setEditingChatId] = useState(null);
+    const [editValue, setEditValue] = useState("");
     const [formData, setFormData] = useState({
         title: '',
         startTime: '08:00',
         deadline: '',
-        deadlineTime: '', 
+        deadlineTime: '',
         date: formatDateToISO(new Date())
     });
 
     const chatEndRef = useRef(null);
 
-    // Fetcher for events and active chat data
+    const months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+
+    const selectMonth = (monthIndex) => {
+        const newDate = new Date(selectedDate);
+        newDate.setMonth(monthIndex);
+        setSelectedDate(newDate);
+    };
+
+    const changeYear = (offset) => {
+        const newDate = new Date(selectedDate);
+        newDate.setFullYear(selectedDate.getFullYear() + offset);
+        setSelectedDate(newDate);
+    };
+
+    const renderMonthSelector = () => (
+        <div className="month-selector-sidebar">
+            {months.map((m, idx) => (
+                <div 
+                    key={m} 
+                    className={`month-item ${selectedDate.getMonth() === idx ? 'active' : ''}`}
+                    onClick={() => selectMonth(idx)}
+                >
+                    {m}
+                </div>
+            ))}
+        </div>
+    );
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth <= 768;
+            setIsMobile(mobile);
+            if (!mobile) setShowSidebar(true);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const fetchEvents = useCallback(async () => {
         try {
             const { data } = await axios.get(`${API_BASE_URL}/events`);
             if (data.success) {
                 setEvents(data.events);
-                
-                // Update activeEvent data ONLY if it's currently open
                 setActiveEvent(current => {
                     if (!current) return null;
                     const updated = data.events.find(ev => ev.id === current.id);
@@ -54,9 +98,8 @@ const TimeTree = () => {
         }
     }, []);
 
-    // Set user on mount
     useEffect(() => {
-        const rawStorage = localStorage.getItem('loggedInUser'); 
+        const rawStorage = localStorage.getItem('loggedInUser');
         if (rawStorage) {
             const loggedInUser = JSON.parse(rawStorage);
             setCurrentUser(loggedInUser.name || loggedInUser.username || "Guest");
@@ -65,18 +108,14 @@ const TimeTree = () => {
         }
     }, []);
 
-    // Polling interval for events (5 seconds)
     useEffect(() => {
         fetchEvents();
-        const interval = setInterval(() => {
-            fetchEvents(); 
-        }, 5000);
+        const interval = setInterval(fetchEvents, 5000);
         return () => clearInterval(interval);
     }, [fetchEvents]);
 
-    // Auto-scroll chat when messages update
-    useEffect(() => { 
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [activeEvent?.chats]);
 
     const deleteEvent = async (id) => {
@@ -92,18 +131,27 @@ const TimeTree = () => {
         }
     };
 
+    const deleteChat = async (chatId) => {
+        if (!window.confirm("Delete this message?")) return;
+        try {
+            await axios.delete(`${API_BASE_URL}/chat/${chatId}`);
+            fetchEvents();
+        } catch (err) { console.error(err); }
+    };
+
+    const updateChat = async (chatId) => {
+        try {
+            await axios.put(`${API_BASE_URL}/chat/${chatId}`, { message_text: editValue });
+            setEditingChatId(null);
+            fetchEvents();
+        } catch (err) { console.error(err); }
+    };
+
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         const timeStr = formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime;
         const dTimeStr = (formData.deadlineTime && formData.deadlineTime.length === 5) ? `${formData.deadlineTime}:00` : formData.deadlineTime;
-
-        const payload = {
-            ...formData,
-            startTime: timeStr,
-            deadline_date: formData.deadline || null,
-            deadlineTime: dTimeStr || null
-        };
-
+        const payload = { ...formData, startTime: timeStr, deadline_date: formData.deadline || null, deadlineTime: dTimeStr || null };
         try {
             const { data } = await axios.post(`${API_BASE_URL}/events`, payload);
             if (data.success) {
@@ -111,38 +159,21 @@ const TimeTree = () => {
                 setFormData({ title: '', startTime: '08:00', deadline: '', deadlineTime: '', date: formatDateToISO(new Date()) });
                 fetchEvents();
             }
-        } catch (err) {
-            alert("Save error: " + (err.response?.data?.error || "Server error"));
-        }
+        } catch (err) { alert("Save error: " + (err.response?.data?.error || "Server error")); }
     };
 
-const sendMessage = async (e) => {
-    if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
-        e.preventDefault();
-        
-        // Get current time in 12-hour format (e.g., "11:28 AM")
-        const now = new Date();
-        const timeString = now.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        });
-        
-        const msgText = newMessage;
-        setNewMessage(""); 
-
-        try {
-            await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, {
-                sender_name: currentUser,
-                message_text: msgText,
-                timestamp: timeString // This sends the formatted time to your DB
-            });
-            fetchEvents(); 
-        } catch (err) {
-            console.error("Message failed", err);
+    const sendMessage = async (e) => {
+        if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
+            e.preventDefault();
+            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            const msgText = newMessage;
+            setNewMessage("");
+            try {
+                await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, { sender_name: currentUser, message_text: msgText, timestamp: timeString });
+                fetchEvents();
+            } catch (err) { console.error("Message failed", err); }
         }
-    }
-};
+    };
 
     const changeMonth = (offset) => {
         setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1));
@@ -155,11 +186,14 @@ const sendMessage = async (e) => {
     };
 
     const getWeekDays = () => {
-        const startOfWeek = new Date(selectedDate);
-        startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+        if (isMobile) {
+            return [new Date(selectedDate)];
+        }
+        const startPoint = new Date(selectedDate);
+        startPoint.setDate(selectedDate.getDate() - selectedDate.getDay());
         return [...Array(7)].map((_, i) => {
-            const d = new Date(startOfWeek);
-            d.setDate(startOfWeek.getDate() + i);
+            const d = new Date(startPoint);
+            d.setDate(startPoint.getDate() + i);
             return d;
         });
     };
@@ -168,13 +202,21 @@ const sendMessage = async (e) => {
         if (!startTime) return { display: 'none' };
         const [hours, minutes] = startTime.split(':').map(Number);
         const topOffset = ((hours * 60 + minutes) / 60) * ROW_HEIGHT;
+        
         return {
             top: `${topOffset}px`,
-            height: `${ROW_HEIGHT}px`,
+            height: isMobile ? 'auto' : `${ROW_HEIGHT}px`,
             position: 'absolute',
             zIndex: 10,
-            width: '92%',
-            left: '4%'
+            width: isMobile ? '90%' : '92%',
+            left: isMobile ? '5%' : '4%',
+            transform: 'none',
+            borderRadius: '4px',
+            padding: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontSize: isMobile ? '10px' : '12px'
         };
     };
 
@@ -183,55 +225,96 @@ const sendMessage = async (e) => {
 
     return (
         <div className="tt-container">
-            <aside className="tt-sidebar-left">
-                <button className="btn-create" onClick={() => setShowModal(true)}>＋ Create</button>
-
-                <div className="sidebar-month-header">
-                    <span className="month-label">{selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                    <div className="month-nav-btns">
-                        <button onClick={() => changeMonth(-1)}>&lt;</button>
-                        <button onClick={() => changeMonth(1)}>&gt;</button>
-                    </div>
-                </div>
-
-                <div className="mini-calendar-container">
-                    <div className="mini-cal-days-header">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                            <div key={`${day}-${idx}`} className="mini-day-name">{day}</div>
-                        ))}
-                    </div>
-                    <div className="mini-cal-grid">
-                        {[...Array(firstDay)].map((_, i) => <div key={`empty-${i}`} />)}
-                        {[...Array(daysInMonth)].map((_, i) => (
-                            <div key={i} className={`mini-day-num ${selectedDate.getDate() === (i + 1) ? 'active' : ''}`}
-                                onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1))}>
-                                {i + 1}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="event-list-sidebar">
-                    <h3>Events</h3>
-                    {events.map(ev => (
-                        <div key={ev.id} className={`sidebar-event-card ${activeEvent?.id === ev.id ? 'active' : ''}`}
-                            onClick={() => { setSelectedDate(parseDbDate(ev.event_date)); setActiveEvent(ev); }}>
-                            <div className="sidebar-event-info">
-                                <strong>{ev.title}</strong>
-                                <div>{ev.start_time?.substring(0, 5)} | {ev.event_date?.substring(0, 10)}</div>
-                            </div>
-                            <button className="btn-delete" onClick={(e) => { e.stopPropagation(); deleteEvent(ev.id); }}>Delete</button>
+            {showSidebar && !isMobile && (
+                <aside className="tt-sidebar-left">
+                    <button className="btn-create" onClick={() => setShowModal(true)}>＋ Create</button>
+                    <div className="sidebar-month-header">
+                        <span className="month-label">{selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
+                        <div className="month-nav-btns">
+                            <button onClick={() => changeMonth(-1)}>&lt;</button>
+                            <button onClick={() => changeMonth(1)}>&gt;</button>
                         </div>
-                    ))}
-                </div>
-            </aside>
+                    </div>
+                    <div className="mini-calendar-container">
+                        <div className="mini-cal-days-header">
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                                <div key={`${day}-${idx}`} className="mini-day-name">{day}</div>
+                            ))}
+                        </div>
+                        <div className="mini-cal-grid">
+                            {[...Array(firstDay)].map((_, i) => <div key={`empty-${i}`} />)}
+                            {[...Array(daysInMonth)].map((_, i) => (
+                                <div key={i} className={`mini-day-num ${selectedDate.getDate() === (i + 1) ? 'active' : ''}`}
+                                    onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1))}>
+                                    {i + 1}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* YEAR SELECTOR REMOVED FROM HERE (PC Sidebar) */}
+
+                    {renderMonthSelector()}
+
+                    <div className="event-list-sidebar">
+                        <h3>Events</h3>
+                        {events.map(ev => (
+                            <div key={ev.id} className={`sidebar-event-card ${activeEvent?.id === ev.id ? 'active' : ''}`}
+                                onClick={() => { setSelectedDate(parseDbDate(ev.event_date)); setActiveEvent(ev); }}>
+                                <div className="sidebar-event-info">
+                                    <strong>{ev.title}</strong>
+                                    {/* UPDATED: Year removed from sidebar list view */}
+                                    <div>{ev.start_time?.substring(0, 5)} | {ev.event_date?.substring(5, 10)}</div>
+                                </div>
+                                <button className="btn-delete" onClick={(e) => { e.stopPropagation(); deleteEvent(ev.id); }}>Delete</button>
+                            </div>
+                        ))}
+                    </div>
+                </aside>
+            )}
 
             <main className="tt-main">
                 <header className="tt-main-header">
-                    <div className="gmt-label">GMT+8</div>
-                    <div className="week-days">
+                    <div className="header-controls" style={{ display: 'flex', alignItems: 'center', minWidth: '150px' }}>
+                        {!isMobile && <button className="btn-toggle" onClick={() => setShowSidebar(!showSidebar)}>☰</button>}
+                        <div className="mobile-title-container" onClick={() => isMobile && setShowMobileCal(!showMobileCal)}>
+                            <span className="month-display">{selectedDate.toLocaleString('default', { month: 'long' })}</span>
+                            {isMobile && <span className="dropdown-arrow">▼</span>}
+                        </div>
+                        <div className="gmt-label" style={{ fontSize: '12px', marginLeft: '10px' }}>GMT+8</div>
+                    </div>
+
+                    <div className="top-header-icons" style={{ marginLeft: 'auto', paddingRight: '20px' }}>
+                        <button className="btn-task-fullscreen" onClick={() => setShowFullEvents(true)} title="Full Event View">
+                            ⛶ List View
+                        </button>
+                    </div>
+                    
+                    {isMobile && showMobileCal && (
+                        <div className="mobile-calendar-dropdown">
+                            <div className="year-selector-container">
+                                <button className="year-nav-arrow" onClick={() => changeYear(-1)}>❮</button>
+                                <span className="current-year-label">{selectedDate.getFullYear()}</span>
+                                <button className="year-nav-arrow" onClick={() => changeYear(1)}>❯</button>
+                            </div>
+                            {renderMonthSelector()}
+                            <div className="mini-calendar-container">
+                                <div className="mini-cal-grid">
+                                    {[...Array(firstDay)].map((_, i) => <div key={`empty-${i}`} />)}
+                                    {[...Array(daysInMonth)].map((_, i) => (
+                                        <div key={i} className={`mini-day-num ${selectedDate.getDate() === (i + 1) ? 'active' : ''}`}
+                                            onClick={() => { setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1)); setShowMobileCal(false); }}>
+                                            {i + 1}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="week-days" style={{ display: 'grid', gridTemplateColumns: `repeat(${currentWeek.length}, 1fr)`, width: '100%' }}>
                         {currentWeek.map((day, i) => (
-                            <div key={i} className="day-col-head">
+                            <div key={i} className="day-col-head" onClick={() => isMobile && setSelectedDate(day)}>
                                 <div className="day-name">{day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                                 <div className={`day-num ${day.toDateString() === selectedDate.toDateString() ? 'active' : ''}`}>
                                     {day.getDate()}
@@ -245,21 +328,28 @@ const sendMessage = async (e) => {
                     <div className="time-labels-column">
                         {[...Array(24)].map((_, i) => <div key={i} className="hour-label-cell">{i}:00</div>)}
                     </div>
-                    <div className="days-columns-container">
+                    <div className="days-columns-container" style={{ display: 'grid', gridTemplateColumns: `repeat(${currentWeek.length}, 1fr)`, flex: 1 }}>
                         {currentWeek.map((dayDate, i) => (
                             <div key={i} className="day-column">
                                 {[...Array(24)].map((_, j) => <div key={j} className="hour-grid-cell" />)}
                                 {events.filter(ev => ev.event_date?.substring(0, 10) === formatDateToISO(dayDate)).map(ev => (
                                     <div key={ev.id} className={`event-card ${activeEvent?.id === ev.id ? 'selected' : ''}`}
                                         style={getEventStyle(ev.start_time)} onClick={() => setActiveEvent(ev)}>
-                                        <div className="event-title">{ev.title}</div>
-                                        <div className="event-time">{ev.start_time?.substring(0, 5)}</div>
+                                        <div className="event-title" style={{ fontWeight: 'bold' }}>{ev.title}</div>
+                                        <div className="event-time">
+                                            {ev.start_time?.substring(0, 5)} 
+                                            {ev.deadline_time && ` - ${ev.deadline_time.substring(0, 5)}`}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         ))}
                     </div>
                 </div>
+
+                {isMobile && (
+                    <button className="fab-create" onClick={() => setShowModal(true)}>+</button>
+                )}
             </main>
 
             {activeEvent && (
@@ -267,7 +357,10 @@ const sendMessage = async (e) => {
                     <aside className="tt-sidebar-chat" onClick={(e) => e.stopPropagation()}>
                         <div className="chat-header">
                             <span className="chat-header-title">{activeEvent.title}</span>
-                            <button onClick={() => setActiveEvent(null)} className="btn-close-chat">✕</button>
+                            <div className="chat-header-actions">
+                                <button onClick={() => deleteEvent(activeEvent.id)} className="btn-delete-event">🗑</button>
+                                <button onClick={() => setActiveEvent(null)} className="btn-close-chat">✕</button>
+                            </div>
                         </div>
                         <div className="chat-messages messenger-layout">
                             {activeEvent.chats?.map((msg, i) => (
@@ -275,8 +368,19 @@ const sendMessage = async (e) => {
                                     <div className="bubble-wrapper">
                                         {msg.sender_name !== currentUser && <div className="chat-sender-name">{msg.sender_name}</div>}
                                         <div className={`chat-bubble ${msg.sender_name === currentUser ? 'me' : 'them'}`}>
-                                            {msg.message_text}
+                                            {editingChatId === msg.id ? (
+                                                <input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} 
+                                                       onKeyDown={(e) => e.key === 'Enter' && updateChat(msg.id)} />
+                                            ) : (
+                                                msg.message_text
+                                            )}
                                         </div>
+                                        {msg.sender_name === currentUser && (
+                                            <div className="chat-actions">
+                                                <span onClick={() => { setEditingChatId(msg.id); setEditValue(msg.message_text); }}>Edit</span>
+                                                <span onClick={() => deleteChat(msg.id)}>Delete</span>
+                                            </div>
+                                        )}
                                         <div className="chat-timestamp">{msg.timestamp || "Just now"}</div>
                                     </div>
                                 </div>
@@ -284,15 +388,52 @@ const sendMessage = async (e) => {
                             <div ref={chatEndRef} />
                         </div>
                         <div className="chat-input-container">
-                            <input 
-                                className="chat-input" 
-                                placeholder={`Message as ${currentUser}...`} 
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)} 
-                                onKeyDown={sendMessage} 
-                            />
+                            <input className="chat-input" placeholder={`Message as ${currentUser}...`} value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)} onKeyDown={sendMessage} />
                         </div>
                     </aside>
+                </div>
+            )}
+
+            {showFullEvents && (
+                <div className="fullscreen-events-overlay">
+                    <span className="fs-close-btn" onClick={() => setShowFullEvents(false)}>&times;</span>
+                    
+                    <div className="year-selector-container" style={{display: 'flex', justifyContent: 'center', marginBottom: '20px'}}>
+                        <button className="year-nav-arrow" onClick={() => changeYear(-1)}>❮</button>
+                        <span className="current-year-label" style={{margin: '0 15px', fontSize: '1.2rem'}}>{selectedDate.getFullYear()}</span>
+                        <button className="year-nav-arrow" onClick={() => changeYear(1)}>❯</button>
+                    </div>
+
+                    <h2>All Tasks & Events</h2>
+                    <div className="fs-events-grid">
+                        {events.map(ev => (
+                            <div key={ev.id} className="sidebar-event-card" style={{opacity: 1, borderLeft: '4px solid #1a73e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '80px'}}
+                                onClick={() => { 
+                                    setSelectedDate(parseDbDate(ev.event_date)); 
+                                    setActiveEvent(ev); 
+                                    setShowFullEvents(false); 
+                                }}>
+                                <div style={{display: 'flex', flexDirection: 'column'}}>
+                                    <strong>{ev.title}</strong>
+                                    {/* UPDATED: Year removed from full-screen list view */}
+                                    <span>Date: {ev.event_date?.substring(5, 10)}</span>
+                                    <span>Start: {ev.start_time?.substring(0, 5)}</span>
+                                    {ev.deadline_time && <span>Deadline: {ev.deadline_time.substring(0, 5)}</span>}
+                                </div>
+                                <button 
+                                    className="btn-delete" 
+                                    style={{position: 'static', opacity: 1, marginLeft: '10px', padding: '8px 12px'}}
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        deleteEvent(ev.id); 
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
