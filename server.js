@@ -1100,6 +1100,30 @@ app.delete("/api/timetree/events/:id", async (req, res) => {
     }
 });
 
+// 5. DELETE CHAT MESSAGE
+app.delete("/api/timetree/chat/:chatId", async (req, res) => {
+    const { chatId } = req.params;
+    try {
+        await queryDB("DELETE FROM event_chats WHERE id = ?", [chatId]);
+        res.json({ success: true, message: "Message deleted" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 6. EDIT CHAT MESSAGE
+app.put("/api/timetree/chat/:chatId", async (req, res) => {
+    const { chatId } = req.params;
+    const { message_text } = req.body;
+    try {
+        await queryDB("UPDATE event_chats SET message_text = ? WHERE id = ?", [message_text, chatId]);
+        res.json({ success: true, message: "Message updated" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
