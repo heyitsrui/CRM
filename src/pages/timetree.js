@@ -82,9 +82,12 @@ const TimeTree = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // --- UPDATED: Fetch with Auto-Complete Logic ---
     const fetchEvents = useCallback(async () => {
         try {
+            // 1. Fetch the list (Logic now handled inside GET /api/timetree/events in server.js)
             const { data } = await axios.get(`${API_BASE_URL}/events`);
+            
             if (data.success) {
                 setEvents(data.events);
                 setActiveEvent(current => {
@@ -97,6 +100,7 @@ const TimeTree = () => {
             console.error("Fetch error:", err);
         }
     }, []);
+    // -------------------------------------------------
 
     useEffect(() => {
         const rawStorage = localStorage.getItem('loggedInUser');
@@ -131,6 +135,18 @@ const TimeTree = () => {
         }
     };
 
+    // --- UPDATED: Toggle Completion ---
+    const toggleEventCompletion = async (event) => {
+        const newStatus = event.status === 'completed' ? 'pending' : 'completed';
+        
+        // 1. Optimistically update UI
+        setEvents(events.map(ev => ev.id === event.id ? {...ev, status: newStatus} : ev));
+        
+        // 2. Update Backend
+        await axios.put(`${API_BASE_URL}/events/${event.id}/status`, { status: newStatus });
+    };
+    // ----------------------------------------
+
     const deleteChat = async (chatId) => {
         if (!window.confirm("Delete this message?")) return;
         try {
@@ -147,22 +163,17 @@ const TimeTree = () => {
         } catch (err) { console.error(err); }
     };
 
-const formatChatMessageTime = (timestamp) => {
-    // If timestamp is null or undefined, we show a fallback
-    if (!timestamp) return "Just now";
-    
-    // Create date object from the DB string (sent_at)
-    const date = new Date(timestamp);
-    
-    // This will return: "Feb 23, 11:21 AM"
-    return date.toLocaleString([], { 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        hour12: true 
-    });
-};
+    const formatChatMessageTime = (timestamp) => {
+        if (!timestamp) return "Just now";
+        const date = new Date(timestamp);
+        return date.toLocaleString([], { 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: true 
+        });
+    };
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         const timeStr = formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime;
@@ -178,23 +189,27 @@ const formatChatMessageTime = (timestamp) => {
         } catch (err) { alert("Save error: " + (err.response?.data?.error || "Server error")); }
     };
 
-const sendMessage = async (e) => {
-    if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
-        e.preventDefault();
-        const msgText = newMessage;
-        setNewMessage("");
-        try {
-            await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, { 
-                sender_name: currentUser, 
-                message_text: msgText, 
-                sent_at: new Date().toISOString() // Use sent_at here
-            });
-            fetchEvents();
-        } catch (err) { console.error("Message failed", err); }
-    }
-};
+    const sendMessage = async (e) => {
+        if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
+            e.preventDefault();
+            const msgText = newMessage;
+            setNewMessage("");
 
-    
+            const rawStorage = localStorage.getItem('loggedInUser');
+            const userObj = rawStorage ? JSON.parse(rawStorage) : {};
+
+            try {
+                await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, { 
+                    sender_id: userObj.id, 
+                    sender_name: userObj.name || "Guest", 
+                    sender_email: userObj.email,
+                    message_text: msgText, 
+                    sent_at: new Date().toISOString()
+                });
+                fetchEvents();
+            } catch (err) { console.error("Message failed", err); }
+        }
+    };
 
     const changeMonth = (offset) => {
         setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1));
@@ -243,7 +258,7 @@ const sendMessage = async (e) => {
 
     const { firstDay, daysInMonth } = getMonthDays();
     const currentWeek = getWeekDays();
-
+    
     return (
         <div className="tt-container">
             {showSidebar && !isMobile && (
@@ -273,18 +288,14 @@ const sendMessage = async (e) => {
                         </div>
                     </div>
 
-                    {/* YEAR SELECTOR REMOVED FROM HERE (PC Sidebar) */}
-
                     {renderMonthSelector()}
-
                     <div className="event-list-sidebar">
                         <h3>Events</h3>
                         {events.map(ev => (
-                            <div key={ev.id} className={`sidebar-event-card ${activeEvent?.id === ev.id ? 'active' : ''}`}
+                            <div key={ev.id} className={`sidebar-event-card ${activeEvent?.id === ev.id ? 'active' : ''} ${ev.status === 'completed' ? 'completed' : ''}`}
                                 onClick={() => { setSelectedDate(parseDbDate(ev.event_date)); setActiveEvent(ev); }}>
                                 <div className="sidebar-event-info">
                                     <strong>{ev.title}</strong>
-                                    {/* UPDATED: Year removed from sidebar list view */}
                                     <div>{ev.start_time?.substring(0, 5)} | {ev.event_date?.substring(5, 10)}</div>
                                 </div>
                                 <button className="btn-delete" onClick={(e) => { e.stopPropagation(); deleteEvent(ev.id); }}>Delete</button>
@@ -306,32 +317,31 @@ const sendMessage = async (e) => {
                     </div>
 
                     <div className="top-header-icons" style={{ marginLeft: 'auto', paddingRight: '20px' }}>
-    <button 
-        className="btn-task-fullscreen group flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 active:scale-95 transition-all" 
-        onClick={() => setShowFullEvents(true)} 
-        title="View Event List"
-    >
-        {/* Checklist Icon using Tailwind for styling */}
-        <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className="text-gray-600 group-hover:text-blue-600"
-        >
-            <path d="M12 7h7" />
-            <path d="M12 12h7" />
-            <path d="M12 17h7" />
-            <path d="m5 7 2 2 4-4" />
-            <path d="m5 17 2 2 4-4" />
-        </svg>
-    </button>
-</div>
+                        <button 
+                            className="btn-task-fullscreen group flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 active:scale-95 transition-all" 
+                            onClick={() => setShowFullEvents(true)} 
+                            title="View Event List"
+                        >
+                            <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                width="20" 
+                                height="20" 
+                                viewBox="0 0 24 24" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                strokeWidth="2" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                className="text-gray-600 group-hover:text-blue-600"
+                            >
+                                <path d="M12 7h7" />
+                                <path d="M12 12h7" />
+                                <path d="M12 17h7" />
+                                <path d="m5 7 2 2 4-4" />
+                                <path d="m5 17 2 2 4-4" />
+                            </svg>
+                        </button>
+                    </div>
                     
                     {isMobile && showMobileCal && (
                         <div className="mobile-calendar-dropdown">
@@ -376,7 +386,7 @@ const sendMessage = async (e) => {
                             <div key={i} className="day-column">
                                 {[...Array(24)].map((_, j) => <div key={j} className="hour-grid-cell" />)}
                                 {events.filter(ev => ev.event_date?.substring(0, 10) === formatDateToISO(dayDate)).map(ev => (
-                                    <div key={ev.id} className={`event-card ${activeEvent?.id === ev.id ? 'selected' : ''}`}
+                                    <div key={ev.id} className={`event-card ${activeEvent?.id === ev.id ? 'selected' : ''} ${ev.status === 'completed' ? 'completed' : ''}`}
                                         style={getEventStyle(ev.start_time)} onClick={() => setActiveEvent(ev)}>
                                         <div className="event-title" style={{ fontWeight: 'bold' }}>{ev.title}</div>
                                         <div className="event-time">
@@ -399,26 +409,43 @@ const sendMessage = async (e) => {
                 <div className="chat-popup-overlay" onClick={() => setActiveEvent(null)}>
                     <aside className="tt-sidebar-chat" onClick={(e) => e.stopPropagation()}>
                         <div className="chat-header">
-                            <span className="chat-header-title">{activeEvent.title}</span>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                {/* --- UPDATED: Checkbox Functional --- */}
+                                <input 
+                                    type="checkbox"
+                                    checked={activeEvent.status === 'completed'} 
+                                    disabled={activeEvent.status === 'completed'} // Unclickable if done
+                                    onChange={() => toggleEventCompletion(activeEvent)}
+                                    style={{width: '20px', height: '20px', cursor: activeEvent.status === 'completed' ? 'not-allowed' : 'pointer'}}
+                                />
+                                <span className={`chat-header-title ${activeEvent.status === 'completed' ? 'completed' : ''}`}>
+                                    {activeEvent.title}
+                                </span>
+                                {/* --------------------------------- */}
+                            </div>
                             <div className="chat-header-actions">
                                 <button onClick={() => deleteEvent(activeEvent.id)} className="btn-delete-event">🗑</button>
                                 <button onClick={() => setActiveEvent(null)} className="btn-close-chat">✕</button>
                             </div>
                         </div>
                         <div className="chat-messages messenger-layout">
-                            {activeEvent.chats?.map((msg, i) => (
-                                <div key={i} className={`chat-row ${msg.sender_name === currentUser ? "me" : "them"}`}>
+                            {activeEvent.chats?.map((msg, i) => {
+                                const currentEmail = JSON.parse(localStorage.getItem('loggedInUser'))?.email;
+                                const isMe = msg.sender_email === currentEmail;
+                                return (
+                                <div key={i} className={`chat-row ${isMe ? "me" : "them"}`}>
                                     <div className="bubble-wrapper">
-                                        {msg.sender_name !== currentUser && <div className="chat-sender-name">{msg.sender_name}</div>}
-                                        <div className={`chat-bubble ${msg.sender_name === currentUser ? 'me' : 'them'}`}>
+                                        {!isMe && <div className="chat-sender-name">{msg.sender_name}</div>}
+                                        
+                                        <div className={`chat-bubble ${isMe ? 'me' : 'them'}`}>
                                             {editingChatId === msg.id ? (
                                                 <input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} 
-                                                       onKeyDown={(e) => e.key === 'Enter' && updateChat(msg.id)} />
-                                            ) : (
-                                                msg.message_text
-                                            )}
+                                                                    onKeyDown={(e) => e.key === 'Enter' && updateChat(msg.id)} />
+                                                ) : (
+                                                    msg.message_text
+                                                )}
                                         </div>
-                                        {msg.sender_name === currentUser && (
+                                        {isMe && (
                                             <div className="chat-actions">
                                                 <span onClick={() => { setEditingChatId(msg.id); setEditValue(msg.message_text); }}>Edit</span>
                                                 <span onClick={() => deleteChat(msg.id)}>Delete</span>
@@ -427,7 +454,8 @@ const sendMessage = async (e) => {
                                         <div className="chat-timestamp">{formatChatMessageTime(msg.sent_at)}</div>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                             <div ref={chatEndRef} />
                         </div>
                         <div className="chat-input-container">
@@ -439,46 +467,49 @@ const sendMessage = async (e) => {
             )}
 
             {showFullEvents && (
-                <div className="fullscreen-events-overlay">
-                    <span className="fs-close-btn" onClick={() => setShowFullEvents(false)}>&times;</span>
-                    
-                    <div className="year-selector-container" style={{display: 'flex', justifyContent: 'center', marginBottom: '20px'}}>
-                        <button className="year-nav-arrow" onClick={() => changeYear(-1)}>❮</button>
-                        <span className="current-year-label" style={{margin: '0 15px', fontSize: '1.2rem'}}>{selectedDate.getFullYear()}</span>
-                        <button className="year-nav-arrow" onClick={() => changeYear(1)}>❯</button>
-                    </div>
+    <div className="fullscreen-events-overlay">
+        <span className="fs-close-btn" onClick={() => setShowFullEvents(false)}>&times;</span>
+        
+        <div className="year-selector-container" style={{display: 'flex', justifyContent: 'center', marginBottom: '20px'}}>
+            <button className="year-nav-arrow" onClick={() => changeYear(-1)}>❮</button>
+            <span className="current-year-label" style={{margin: '0 15px', fontSize: '1.2rem'}}>{selectedDate.getFullYear()}</span>
+            <button className="year-nav-arrow" onClick={() => changeYear(1)}>❯</button>
+        </div>
 
-                    <h2>All Tasks & Events</h2>
-                    <div className="fs-events-grid">
-                        {events.map(ev => (
-                            <div key={ev.id} className="sidebar-event-card" style={{opacity: 1, borderLeft: '4px solid #1a73e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '80px'}}
-                                onClick={() => { 
-                                    setSelectedDate(parseDbDate(ev.event_date)); 
-                                    setActiveEvent(ev); 
-                                    setShowFullEvents(false); 
-                                }}>
-                                <div style={{display: 'flex', flexDirection: 'column'}}>
-                                    <strong>{ev.title}</strong>
-                                    {/* UPDATED: Year removed from full-screen list view */}
-                                    <span>Date: {ev.event_date?.substring(5, 10)}</span>
-                                    <span>Start: {ev.start_time?.substring(0, 5)}</span>
-                                    {ev.deadline_time && <span>Deadline: {ev.deadline_time.substring(0, 5)}</span>}
-                                </div>
-                                <button 
-                                    className="btn-delete" 
-                                    style={{position: 'static', opacity: 1, marginLeft: '10px', padding: '8px 12px'}}
-                                    onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        deleteEvent(ev.id); 
-                                    }}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        ))}
+        <h2>All Tasks & Events</h2>
+        <div className="fs-events-grid">
+            {events.map(ev => (
+                <div 
+                    key={ev.id} 
+                    className={`sidebar-event-card ${ev.status === 'completed' ? 'completed' : ''}`} 
+                    style={{opacity: 1, borderLeft: '4px solid #1a73e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '80px'}}
+                    onClick={() => { 
+                        setSelectedDate(parseDbDate(ev.event_date)); 
+                        setActiveEvent(ev); 
+                        setShowFullEvents(false); 
+                    }}
+                >
+                    <div style={{display: 'flex', flexDirection: 'column'}}>
+                        <strong>{ev.title}</strong>
+                        <span>Date: {ev.event_date?.substring(5, 10)}</span>
+                        <span>Start: {ev.start_time?.substring(0, 5)}</span>
+                        {ev.deadline_time && <span>Deadline: {ev.deadline_time.substring(0, 5)}</span>}
                     </div>
+                    <button 
+                        className="btn-delete" 
+                        style={{position: 'static', opacity: 1, marginLeft: '10px', padding: '8px 12px'}}
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            deleteEvent(ev.id); 
+                        }}
+                    >
+                        Delete
+                    </button>
                 </div>
-            )}
+            ))}
+        </div>
+    </div>
+)}
 
             {showModal && (
                 <div className="modal-overlay">
