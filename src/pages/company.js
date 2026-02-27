@@ -10,6 +10,7 @@ const Company = ({ userRole }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [industryFilter, setIndustryFilter] = useState('All'); // Added Industry filter state
   const fileInputRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // ✅ ROLES
   const allowedRoles = ['admin', 'manager', 'executive'];
@@ -128,6 +129,12 @@ const Company = ({ userRole }) => {
     fetchCompanies();
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // ✅ UPDATED SEARCH & INDUSTRY FILTER LOGIC
   const filteredCompanies = useMemo(() => {
     return companies.filter((co) => {
@@ -179,10 +186,22 @@ const Company = ({ userRole }) => {
   };
 
   return (
-    <div className="dashboard-content">
-      <div className="view-header-tabs">
-        <div className="tab active">All companies</div>
-        <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
+    <div className="view-container">
+            <div 
+          className="view-header-tabs" 
+          style={{ 
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row', 
+            alignItems: isMobile ? 'flex-start' : 'center', 
+            justifyContent: 'space-between',
+            paddingBottom: isMobile ? '15px' : '0px',
+            marginTop: isMobile ? '20px' : '0px',
+            padding: '20px' 
+          }}
+        >
+
+        <div style={{ fontWeight: 'bold'}}>All companies</div>
+        <div className="header-actions" style={{ display: 'flex', gap: '10px', marginTop: isMobile ? '20px' : '0px'}}>
           {canEdit && (
             <>
               <input 
@@ -205,7 +224,14 @@ const Company = ({ userRole }) => {
         </div>
       </div>
 
-      <div className="toolbar" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+      <div className="toolbar project-toolbar" style={{
+        display: 'flex', 
+        /* Translates your media query logic to inline style */
+        flexDirection: isMobile ? 'column' : 'row', 
+        alignItems: isMobile ? 'stretch' : 'center', 
+        marginTop: isMobile ? '130px' : '0px', 
+        gap: '15px'}}>
+
         {/* ✅ INDUSTRY FILTER DROPDOWN */}
         <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <Filter size={18} style={{ color: '#64748b' }} />
@@ -239,7 +265,7 @@ const Company = ({ userRole }) => {
         </div>
       </div>
 
-      <div className="table-container">
+      <div className="table-responsive-wrapper">
         {isLoading ? (
           <div className="loading-state">Loading companies...</div>
         ) : (
