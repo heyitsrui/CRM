@@ -8,6 +8,7 @@ export default function UserManagement({ currentUser }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const [form, setForm] = useState({ 
     name: "", 
@@ -114,13 +115,28 @@ export default function UserManagement({ currentUser }) {
   };
 
   return (
-    <div className="dashboard-content">
+    <div className="view-container">
       {/* HEADER TABS */}
-      <div className="view-header-tabs">
-        <div className="tab active">All users</div>
-        <div className="header-actions">
+       <div 
+          className="view-header-tabs" 
+          style={{ 
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row', 
+            alignItems: isMobile ? 'flex-start' : 'center', 
+            justifyContent: 'space-between',
+            paddingBottom: isMobile ? '15px' : '0px',
+            marginTop: isMobile ? '20px' : '0px',
+            padding: '20px' 
+          }}
+        >
+        <div style={{ fontWeight: 'bold'}}>Users</div>
+        <div className="header-actions" style={{ display: 'flex', gap: '10px', marginTop: isMobile ? '20px' : '0px'}}>
           {isAdmin && (
-            <button className="add-company-btn" onClick={toggleModal}>
+            <button
+              className="add-company-btn" 
+              onClick={toggleModal}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+              >
               Add user
             </button>
           )}
@@ -128,7 +144,14 @@ export default function UserManagement({ currentUser }) {
       </div>
 
       {/* TOOLBAR */}
-      <div className="toolbar">
+        <div className="toolbar project-toolbar" style={{
+        display: 'flex', 
+        /* Translates your media query logic to inline style */
+        flexDirection: isMobile ? 'column' : 'row', 
+        alignItems: isMobile ? 'stretch' : 'center', 
+        marginTop: isMobile ? '70px' : '0px', 
+        gap: '15px'}}>
+
         <div className="search-container">
           <input 
             type="text" 
@@ -145,7 +168,7 @@ export default function UserManagement({ currentUser }) {
       </div>
 
       {/* TABLE */}
-      <div className="table-container">
+      <div className="table-responsive-wrapper">
         {isLoading ? (
           <div className="loading-state">Loading users...</div>
         ) : (
