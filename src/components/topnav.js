@@ -68,7 +68,7 @@ const TopNav = ({ loggedInUser, onNavigate, onLogout, toggleSidebar }) => {
       <button 
         className="hamburger-btn" 
         onClick={toggleSidebar}
-        style={{ marginRight: '15px', background: 'none', border: 'none', cursor: 'pointer' }}
+        style={{ marginRight: '50px', background: 'none', border: 'none', cursor: 'pointer' }}
       >
         <Menu size={24} color="#333" />
       </button>
