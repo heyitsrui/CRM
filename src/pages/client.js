@@ -10,6 +10,7 @@ const Client = ({ userRole }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const fileInputRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const canEdit = userRole !== 'finance' && userRole !== 'viewer';
   const statusOptions = ['All', 'New', 'In Progress', 'Connected', 'Open Deal', 'Open', 'Attempted to Contact'];
@@ -109,6 +110,13 @@ const Client = ({ userRole }) => {
 
   useEffect(() => { fetchClients(); }, []);
 
+    useEffect(() => {
+      const handleResize = () => setIsMobile(window.innerWidth < 768);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, []);
+  
+
   const toggleModal = () => {
     if (!canEdit) return;
     setIsModalOpen(!isModalOpen);
@@ -139,10 +147,22 @@ const Client = ({ userRole }) => {
   };
 
   return (
-    <div className="dashboard-content">
-      <div className="view-header-tabs">
-        <div className="tab active">All clients</div>
-        <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
+    <div className="view-container">
+            <div 
+          className="view-header-tabs" 
+          style={{ 
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row', 
+            alignItems: isMobile ? 'flex-start' : 'center', 
+            justifyContent: 'space-between',
+            paddingBottom: isMobile ? '15px' : '0px',
+            marginTop: isMobile ? '20px' : '0px',
+            padding: '20px' 
+          }}
+        >
+
+        <div style={{ fontWeight: 'bold'}} >All clients</div>
+        <div className="header-actions" style={{ display: 'flex', gap: '10px', marginTop: isMobile ? '20px' : '0px'}}>
           {canEdit && (
             <>
               <input type="file" ref={fileInputRef} onChange={handleExcelImport} accept=".xlsx, .xls, .csv" style={{ display: 'none' }} />
@@ -155,7 +175,14 @@ const Client = ({ userRole }) => {
         </div>
       </div>
 
-      <div className="toolbar" style={{ display: 'flex', alignItems: 'center'}}>
+        <div className="toolbar project-toolbar" style={{
+        display: 'flex', 
+        /* Translates your media query logic to inline style */
+        flexDirection: isMobile ? 'column' : 'row', 
+        alignItems: isMobile ? 'stretch' : 'center', 
+        marginTop: isMobile ? '130px'  : '0px', 
+        gap: '15px'}}>
+          
         <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <Filter size={18} style={{ color: '#64748b' }} />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px' }}>
@@ -178,7 +205,7 @@ const Client = ({ userRole }) => {
         </div>
       </div>
 
-      <div className="table-container">
+      <div className="table-responsive-wrapper">
         {isLoading ? (
           <div className="loading-state">Loading clients...</div>
         ) : (
