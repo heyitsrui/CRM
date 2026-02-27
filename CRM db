@@ -128,3 +128,38 @@ CREATE TABLE `users` (
 	PRIMARY KEY (`id`) USING BTREE,
 	UNIQUE INDEX `email` (`email`) USING BTREE
 );
+
+CREATE TABLE `event_chats` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`event_id` INT(11) NOT NULL,
+	`sender_name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`message_text` TEXT NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`sent_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`sender_id` INT(11) NULL DEFAULT NULL,
+	`sender_email` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `event_id` (`event_id`) USING BTREE,
+	INDEX `fk_sender` (`sender_id`) USING BTREE,
+	CONSTRAINT `event_chats_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `timetree_events` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE,
+	CONSTRAINT `fk_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
+)
+COLLATE='utf8mb4_uca1400_ai_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=52
+;
+
+CREATE TABLE `timetree_events` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`title` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+	`event_date` DATE NOT NULL,
+	`start_time` TIME NOT NULL,
+	`created_at` TIMESTAMP NULL DEFAULT current_timestamp(),
+	`deadline_date` DATE NULL DEFAULT NULL,
+	`deadline_time` TIME NULL DEFAULT NULL,
+	`status` VARCHAR(20) NULL DEFAULT 'pending' COLLATE 'utf8mb4_uca1400_ai_ci',
+	PRIMARY KEY (`id`) USING BTREE
+)
+COLLATE='utf8mb4_uca1400_ai_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=55
+;
