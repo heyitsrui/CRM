@@ -76,12 +76,12 @@ const Finance = ({ loggedInUser }) => {
   };
 
   return (
-    <div className="finance-page-container">
-      <div className="view-header-tabs">
-        <div className="tab active">Financial Management</div>
+    <div className="view-container">
+      <div className="view-header-tabs" style={{ padding: '20px' }}>
+        <div style={{ fontWeight: 'bold'}}>Financial Management</div>
       </div>
 
-      <div className="toolbar" style={{ display: 'flex', alignItems: 'center'}}>
+      <div className="toolbar project-toolbar" style={{ display: 'flex', alignItems: 'center'}}>
         <div className="filter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '5px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <Filter size={18} style={{ color: '#64748b' }} />
           <select 
@@ -114,7 +114,7 @@ const Finance = ({ loggedInUser }) => {
         </div>
       </div>
 
-      <div className="table-container">
+      <div className="table-responsive-wrapper">
         <table className="crm-table">
           <thead>
             <tr>
