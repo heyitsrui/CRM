@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import '../styles/timetree.css';
 
-const API_BASE_URL = 'http://127.0.0.1:5000/api/timetree';
+const API_BASE_URL = 'http://localhost:5000/api/timetree';
 const ROW_HEIGHT = 60;
 
 const formatDateToISO = (date) => {
@@ -147,6 +147,22 @@ const TimeTree = () => {
         } catch (err) { console.error(err); }
     };
 
+const formatChatMessageTime = (timestamp) => {
+    // If timestamp is null or undefined, we show a fallback
+    if (!timestamp) return "Just now";
+    
+    // Create date object from the DB string (sent_at)
+    const date = new Date(timestamp);
+    
+    // This will return: "Feb 23, 11:21 AM"
+    return date.toLocaleString([], { 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: true 
+    });
+};
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         const timeStr = formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime;
@@ -162,18 +178,23 @@ const TimeTree = () => {
         } catch (err) { alert("Save error: " + (err.response?.data?.error || "Server error")); }
     };
 
-    const sendMessage = async (e) => {
-        if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
-            e.preventDefault();
-            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-            const msgText = newMessage;
-            setNewMessage("");
-            try {
-                await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, { sender_name: currentUser, message_text: msgText, timestamp: timeString });
-                fetchEvents();
-            } catch (err) { console.error("Message failed", err); }
-        }
-    };
+const sendMessage = async (e) => {
+    if (e.key === 'Enter' && newMessage.trim() && activeEvent) {
+        e.preventDefault();
+        const msgText = newMessage;
+        setNewMessage("");
+        try {
+            await axios.post(`${API_BASE_URL}/events/${activeEvent.id}/chat`, { 
+                sender_name: currentUser, 
+                message_text: msgText, 
+                sent_at: new Date().toISOString() // Use sent_at here
+            });
+            fetchEvents();
+        } catch (err) { console.error("Message failed", err); }
+    }
+};
+
+    
 
     const changeMonth = (offset) => {
         setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1));
@@ -285,10 +306,32 @@ const TimeTree = () => {
                     </div>
 
                     <div className="top-header-icons" style={{ marginLeft: 'auto', paddingRight: '20px' }}>
-                        <button className="btn-task-fullscreen" onClick={() => setShowFullEvents(true)} title="Full Event View">
-                            ⛶ List View
-                        </button>
-                    </div>
+    <button 
+        className="btn-task-fullscreen group flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 active:scale-95 transition-all" 
+        onClick={() => setShowFullEvents(true)} 
+        title="View Event List"
+    >
+        {/* Checklist Icon using Tailwind for styling */}
+        <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className="text-gray-600 group-hover:text-blue-600"
+        >
+            <path d="M12 7h7" />
+            <path d="M12 12h7" />
+            <path d="M12 17h7" />
+            <path d="m5 7 2 2 4-4" />
+            <path d="m5 17 2 2 4-4" />
+        </svg>
+    </button>
+</div>
                     
                     {isMobile && showMobileCal && (
                         <div className="mobile-calendar-dropdown">
@@ -381,7 +424,7 @@ const TimeTree = () => {
                                                 <span onClick={() => deleteChat(msg.id)}>Delete</span>
                                             </div>
                                         )}
-                                        <div className="chat-timestamp">{msg.timestamp || "Just now"}</div>
+                                        <div className="chat-timestamp">{formatChatMessageTime(msg.sent_at)}</div>
                                     </div>
                                 </div>
                             ))}
