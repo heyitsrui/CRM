@@ -159,7 +159,7 @@ const filteredData = useMemo(() => {
 
               {/* ✅ Search Bar */}
               <div className="search-container">
-                <Search size={18} className="search-icon-fixed" style={{position: 'absolute', left: '10px', color: '#94a3b8'}} />
+                <Search size={18} className="search-icon-fixed" style={{position: 'absolute', left: '15px', color: '#94a3b8'}} />
                 <input
                   className="search-input"
                   style={{paddingLeft: '35px'}}
