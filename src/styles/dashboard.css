@@ -57,7 +57,6 @@ body {
   display: flex;
   flex-direction: column;
   margin-top: 70px; /* TopNav height */
-  overflow-y: auto;
   height: calc(100vh - 70px); /* fills remaining space */
 }
 
@@ -274,8 +273,9 @@ body {
 =============================== */
 .view-container {
   padding: 30px;
-  overflow-y: auto;
   height: calc(100vh - 70px);
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -511,6 +511,7 @@ body {
   background: #fff;
   border: 1px solid #dfe3eb;
   border-top: none;
+  align-items: center; /* Keeps button and search aligned */
 }
 
 .search-container {
@@ -626,6 +627,9 @@ body {
 .header-actions {
   margin-left: auto;
   padding-right: 15px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 /* --- Global Aesthetic Fixes --- */
@@ -768,7 +772,7 @@ body {
 }
 
 .btn-primary:hover {
-  background-color: #000080; /* Darker blue on hover */
+  background-color: #000080; 
 }
 
 .btn-secondary:hover {
@@ -911,36 +915,74 @@ body {
   }
 }
 
-@media (max-width: 768px) {
-  .crm-table thead {
-    display: none;
-  }
+/* ===============================
+   RESPONSIVE TABLE & TOOLBAR
+=============================== */
 
-  .crm-table,
-  .crm-table tbody,
-  .crm-table tr,
-  .crm-table td {
-    display: block;
+/* 1. The Scroll Wrapper */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto; /* Enable horizontal scroll */
+  -webkit-overflow-scrolling: touch;
+  background: white;
+  border: 1px solid #dfe3eb;
+  border-radius: 0 0 12px 12px;
+}
+
+/* 2. Ensure table doesn't collapse below a readable width */
+.crm-table {
+  min-width: 900px; /* Forces scroll on small screens */
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.crm-table-client {
+  min-width: 900px; /* Forces scroll on small screens */
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 3. Make Toolbar Wrap on Mobile */
+.project-toolbar {
+  display: flex;
+  flex-wrap: wrap; /* Allows items to wrap to next line */
+  padding: 15px;
+}
+
+/* 4. Adjustments for small screens */
+@media (max-width: 768px) {
+
+  .search-container {
     width: 100%;
   }
 
-  .crm-table tr {
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
-    padding: 10px;
+  .filter-wrapper {
+    width: 100%;
   }
 
-  .crm-table td {
-    text-align: right;
-    padding-left: 50%;
-    position: relative;
+  .view-container {
+    padding: 15px; /* Reduce padding for more screen space */
+  }
+}
+
+@media (max-width: 768px) {
+  /* Stack the Tab and Buttons vertically */
+  .view-header-tabs {
+    flex-direction: column;
+    align-items: flex-start; /* Align everything to the left */
   }
 
-  .crm-table td::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 10px;
-    font-weight: bold;
-    text-align: left;
+  /* Make buttons stretch to fill width or stay in a neat row */
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 30px;
+  }
+
+  .header-actions button {
+    flex: 1; /* Makes both buttons equal width on mobile */
+    justify-content: center;
+    font-size: 13px;
+    padding: 10px 5px;
   }
 }
