@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Edit, Search, X, Filter } from 'lucide-react';
 import axios from 'axios';
-import '../styles/dashboard.css'; 
+import '../styles/dashboard.css';
+import { sendNotification } from "../utils/notifService";
 
 const Finance = ({ loggedInUser }) => {
   const [projects, setProjects] = useState([]);
@@ -65,6 +66,14 @@ const Finance = ({ loggedInUser }) => {
       });
 
       if (res.data.success) {
+        const formattedAmount = Number(paidAmount).toLocaleString();
+        const formattedBalance = Number(res.data.balance).toLocaleString();
+        
+        sendNotification(
+          `💰 Payment Updated for "${selectedProject.deal_name}": ` +
+          `New Paid Total: ₱${formattedAmount} (Remaining Balance: ₱${formattedBalance})`
+        );
+        
         alert(`Payment Updated! New Balance: ₱${Number(res.data.balance).toLocaleString()}`);
         setIsModalOpen(false);
         fetchFinanceData(); 
