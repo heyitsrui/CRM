@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react'; // Added Loader2
 import { motion } from 'framer-motion';
 import '../styles/forgot-pass.css';
 import bgVideo from '../assets/video/background.mp4';
@@ -7,7 +7,6 @@ import bgVideo from '../assets/video/background.mp4';
 function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
-  // Changed otp to an array for the 6 boxes
   const [otp, setOtp] = useState(['', '', '', '', '', '']); 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,6 +18,7 @@ function ForgotPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [canResend, setCanResend] = useState(true);
   const [timer, setTimer] = useState(0);
+  const [isLoading, setIsLoading] = useState(false); // Added loading state
 
   const inputRefs = useRef([]);
   const API = "http://localhost:5000";
@@ -33,14 +33,12 @@ function ForgotPassword() {
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    // Auto-focus next box
     if (value && index < 5) {
       inputRefs.current[index + 1].focus();
     }
   };
 
   const handleKeyDown = (e, index) => {
-    // Backspace to previous box
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1].focus();
     }
@@ -71,6 +69,7 @@ function ForgotPassword() {
       return;
     }
 
+    setIsLoading(true); // Start loading
     try {
       const res = await fetch(`${API}/send-otp`, {
         method: 'POST',
@@ -89,6 +88,8 @@ function ForgotPassword() {
       }
     } catch {
       setError('Cannot connect to server.');
+    } finally {
+      setIsLoading(false); // Stop loading
     }
   };
 
@@ -112,6 +113,7 @@ function ForgotPassword() {
       return;
     }
 
+    setIsLoading(true); // Start loading
     try {
       const res = await fetch(`${API}/verify-otp`, {
         method: 'POST',
@@ -127,13 +129,16 @@ function ForgotPassword() {
         setTimeout(() => {
           setStep(3);
           setOtpMessage('');
+          setIsLoading(false); // Stop loading after transition
         }, 800);
       } else {
         setError(data.message || 'Invalid or expired OTP');
         setOtpCorrect(false);
+        setIsLoading(false); // Stop loading on error
       }
     } catch {
       setError('Cannot connect to server.');
+      setIsLoading(false);
     }
   };
 
@@ -149,6 +154,7 @@ function ForgotPassword() {
       return;
     }
 
+    setIsLoading(true); // Start loading
     try {
       const res = await fetch(`${API}/reset-password`, {
         method: 'POST',
@@ -165,9 +171,11 @@ function ForgotPassword() {
         }, 3000);
       } else {
         setError(data.message || 'Failed to reset password');
+        setIsLoading(false);
       }
     } catch {
       setError('Server error');
+      setIsLoading(false);
     }
   };
 
@@ -214,8 +222,11 @@ function ForgotPassword() {
                 placeholder="Input your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
               />
-              <button className="fp-btn" onClick={handleGetOtp}>Get OTP</button>
+              <button className="fp-btn" onClick={handleGetOtp} disabled={isLoading}>
+                {isLoading ? <Loader2 className="spinner-icon" size={20} /> : "Get OTP"}
+              </button>
             </>
           )}
 
@@ -239,18 +250,21 @@ function ForgotPassword() {
                     ref={(el) => (inputRefs.current[index] = el)}
                     onChange={(e) => handleOtpChange(e.target.value, index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
+                    disabled={isLoading}
                   />
                 ))}
               </div>
 
-              <button className="fp-btn" onClick={handleConfirmOtp}>Confirm OTP</button>
+              <button className="fp-btn" onClick={handleConfirmOtp} disabled={isLoading}>
+                {isLoading ? <Loader2 className="spinner-icon" size={20} /> : "Confirm OTP"}
+              </button>
               <div className="resend-container">
                 <span className="resend-text">Didn't you receive any code? </span>
                 <button 
                   type="button" 
-                  className={`resend-link ${!canResend ? 'disabled' : ''}`} 
+                  className={`resend-link ${(!canResend || isLoading) ? 'disabled' : ''}`} 
                   onClick={handleResendOtp}
-                  disabled={!canResend}
+                  disabled={!canResend || isLoading}
                 >
                   {canResend ? "Resend Code" : `Wait ${timer}s`}
                 </button>
@@ -272,8 +286,9 @@ function ForgotPassword() {
                   placeholder="New password"
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
-                <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)}>
+                <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)} disabled={isLoading}>
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
@@ -286,16 +301,18 @@ function ForgotPassword() {
                   placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
                 />
-                <button type="button" className="eye-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <button type="button" className="eye-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)} disabled={isLoading}>
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
               <button
                 className="fp-btn secondary"
                 onClick={handleResetPassword}
+                disabled={isLoading}
               >
-                Confirm
+                {isLoading ? <Loader2 className="spinner-icon" size={20} /> : "Confirm"}
               </button>
             </>
           )}
