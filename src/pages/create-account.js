@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react'; // Import icons
+import { Eye, EyeOff, Loader2 } from 'lucide-react'; // Added Loader2
 import '../styles/create-account.css';
 import bgVideo from '../assets/video/background.mp4';
 import axios from "axios";
@@ -16,8 +16,9 @@ function CreateAccount() {
     confirmPassword: ''
   });
 
-  const [showPassword, setShowPassword] = useState(false); // New state
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // Loading state
   const navigate = useNavigate();
 
   const togglePasswordVisibility = () => {
@@ -53,16 +54,22 @@ function CreateAccount() {
     e.preventDefault();
     if (!validate()) return;
 
+    setIsLoading(true); // Start loading animation
+    setError('');
+
     try {
       await axios.post("http://localhost:5000/send-otp", {
         email: formData.email,
         type: 'signup'
       });
+      
       localStorage.setItem("pendingUserData", JSON.stringify(formData));
       localStorage.setItem("userEmail", formData.email);
       navigate("/confirm-email");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setIsLoading(false); // Stop loading animation
     }
   };
 
@@ -107,10 +114,16 @@ function CreateAccount() {
           </AnimatePresence>
 
           <form onSubmit={handleRegister} className="login-form">
-            {/* Position, Name, Email, and Phone fields remain the same... */}
             <div className="input-group">
               <label>Select Position</label>
-              <select name="position" value={formData.position} onChange={handleChange} required className="custom-select">
+              <select 
+                name="position" 
+                value={formData.position} 
+                onChange={handleChange} 
+                required 
+                className="custom-select"
+                disabled={isLoading}
+              >
                 <option value="" disabled>Select your position here</option>
                 <option value="admin">System Administrator</option>
                 <option value="manager">Sales Manager</option>
@@ -122,17 +135,39 @@ function CreateAccount() {
 
             <div className="input-group">
               <label>Name</label>
-              <input name="name" type="text" placeholder="Input your fullname" onChange={handleChange} required />
+              <input 
+                name="name" 
+                type="text" 
+                placeholder="Input your fullname" 
+                onChange={handleChange} 
+                required 
+                disabled={isLoading}
+              />
             </div>
 
             <div className="input-group">
               <label>Email</label>
-              <input name="email" type="email" placeholder="Input your email" onChange={handleChange} required />
+              <input 
+                name="email" 
+                type="email" 
+                placeholder="Input your email" 
+                onChange={handleChange} 
+                required 
+                disabled={isLoading}
+              />
             </div>
 
             <div className="input-group">
               <label>Phone Number</label>
-              <input name="phone" type="tel" placeholder="e.g. 09XXXXXXXXX" value={formData.phone} onChange={handleChange} required />
+              <input 
+                name="phone" 
+                type="tel" 
+                placeholder="e.g. 09XXXXXXXXX" 
+                value={formData.phone} 
+                onChange={handleChange} 
+                required 
+                disabled={isLoading}
+              />
             </div>
 
             <div className="input-group">
@@ -145,11 +180,13 @@ function CreateAccount() {
                     placeholder="8+ characters with numbers"
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                   <button 
                     type="button" 
                     className="eye-btn" 
                     onClick={togglePasswordVisibility}
+                    disabled={isLoading}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -161,11 +198,25 @@ function CreateAccount() {
                   placeholder="Confirm password"
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
-            <button type="submit" className="register-btn">Register</button>
+            <button 
+                type="submit" 
+                className="register-btn" 
+                disabled={isLoading}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="spinner-icon" size={18} />
+                </>
+              ) : (
+                "Register"
+              )}
+            </button>
           </form>
         </motion.div>
       </div>
