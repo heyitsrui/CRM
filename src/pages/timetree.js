@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import '../styles/timetree.css';
+import { sendNotification } from "../utils/notifService";
 
 const API_BASE_URL = 'http://localhost:5000/api/timetree';
 const ROW_HEIGHT = 60;
@@ -89,6 +90,12 @@ const TimeTree = () => {
             const { data } = await axios.get(`${API_BASE_URL}/events`);
             
             if (data.success) {
+                data.events.forEach(newEvent => {
+                    const oldEvent = events.find(e => e.id === newEvent.id);
+                    if (oldEvent && oldEvent.status === 'pending' && newEvent.status === 'completed') {
+                    sendNotification(`⏰ Deadline reached: "${newEvent.title}" has been auto-completed.`);
+                }
+            });
                 setEvents(data.events);
                 setActiveEvent(current => {
                     if (!current) return null;
@@ -99,7 +106,7 @@ const TimeTree = () => {
         } catch (err) {
             console.error("Fetch error:", err);
         }
-    }, []);
+    }, [events]);
     // -------------------------------------------------
 
     useEffect(() => {
@@ -117,6 +124,26 @@ const TimeTree = () => {
         const interval = setInterval(fetchEvents, 5000);
         return () => clearInterval(interval);
     }, [fetchEvents]);
+
+    useEffect(() => {
+        const checkDeadlines = () => {
+            const now = new Date();
+            const currentTimeStr = now.toTimeString().substring(0, 5);
+            const currentDateStr = formatDateToISO(now);
+
+            events.forEach(ev => {
+                const eventDate = ev.event_date?.substring(0, 10);
+                const eventTime = ev.start_time?.substring(0, 5);
+
+                if (ev.status === 'pending' && eventDate === currentDateStr && eventTime === currentTimeStr) {
+                    sendNotification(`⏰ Dynamic Alert: "${ev.title}" is starting now!`)
+                }
+            });
+        };
+
+        const timer = setInterval(checkDeadlines, 60000);
+        return () => clearInterval(timer);
+    }, [events]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -142,8 +169,22 @@ const TimeTree = () => {
         // 1. Optimistically update UI
         setEvents(events.map(ev => ev.id === event.id ? {...ev, status: newStatus} : ev));
         
-        // 2. Update Backend
-        await axios.put(`${API_BASE_URL}/events/${event.id}/status`, { status: newStatus });
+        try {
+            // 2. Update Backend
+            const res = await axios.put(`${API_BASE_URL}/events/${event.id}/status`, { status: newStatus });
+            
+            // ✅ Trigger Notification only when marking as completed
+            if (newStatus === 'completed') {
+                sendNotification(`✅ Event Completed: "${event.title}" has been marked as finished by ${currentUser}! 🎉`);
+            } else {
+                // Optional: Notification for reopening a task
+                sendNotification(`🔄 Event Reopened: "${event.title}" is back on the list.`);
+            }
+        } catch (err) {
+            console.error("Status update failed", err);
+            // Rollback UI if backend fails
+            fetchEvents(); 
+        }
     };
     // ----------------------------------------
 
@@ -182,6 +223,7 @@ const TimeTree = () => {
         try {
             const { data } = await axios.post(`${API_BASE_URL}/events`, payload);
             if (data.success) {
+                sendNotification(`📅 New Event Created: "${formData.title}" scheduled for ${formData.date} at ${formData.startTime}`);
                 setShowModal(false);
                 setFormData({ title: '', startTime: '08:00', deadline: '', deadlineTime: '', date: formatDateToISO(new Date()) });
                 fetchEvents();
@@ -206,6 +248,7 @@ const TimeTree = () => {
                     message_text: msgText, 
                     sent_at: new Date().toISOString()
                 });
+                sendNotification(`💬 ${currentUser} commented on "${activeEvent.title}"`);
                 fetchEvents();
             } catch (err) { console.error("Message failed", err); }
         }
