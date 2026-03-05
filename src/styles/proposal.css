@@ -1,10 +1,12 @@
 .proposal-page {
   padding: 20px;
-  max-width: 1600px;
+  max-width: 1550px;
   margin: auto;
   background: #f9f9f9;
   font-family: "Poppins", sans-serif;
   font-size: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* HEADER */
@@ -65,7 +67,7 @@
   scrollbar-width: thin;
   overflow-y: hidden; /* Prevent double scrollbars */
   padding-bottom: 10px;
-  max-height: calc(100vh - 150px); 
+  max-height: calc(90vh - 150px); 
   display: flex;
 }
 
