@@ -195,7 +195,7 @@ const Projects = ({ loggedInUser }) => {
 
         <h3>Generate Project Document</h3>
 
-        <input name="prefix" placeholder="Prefix: Mr/Mrs" onChange={handleInputChange}/>
+        <input name="prefix" placeholder="Prefix: Mr./Mrs." onChange={handleInputChange}/>
         <input name="client_name" placeholder="Client Name" onChange={handleInputChange}/>
         <input name="position" placeholder="Client Position" onChange={handleInputChange}/>
         <input name="company_name" placeholder="Company Name" onChange={handleInputChange}/>
