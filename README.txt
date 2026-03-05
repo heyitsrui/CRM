@@ -7,8 +7,7 @@ npm install axios
 npm install --save-dev @babel/preset-env @babel/preset-react
 npm install chart.js react-chartjs-2
 
-FOR OTP SET-UP
-cd backend
+FOR OTP SET-UP INSIDE BACKEND FOLDER
 npm init -y
 npm install express nodemailer cors dotenv otp-generator (inside backend folder)
 
@@ -16,7 +15,10 @@ npm install express nodemailer cors dotenv otp-generator (inside backend folder)
 FOR DATABASE
 npm install express mariadb cors
 
+
 npm install xlsx
 npm install bcrypt
 npm install multer
 
+FOR FILE GENERATION INSIDE BACKEND FOLDER
+npm install docxtemplater pizzip fs path
