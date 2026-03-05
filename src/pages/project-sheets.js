@@ -53,6 +53,44 @@ const Projects = ({ loggedInUser }) => {
     return status.toLowerCase().replace(/\s+/g, '-');
   };
 
+  const [showModal, setShowModal] = useState(false);
+
+  const [docData, setDocData] = useState({
+    prefix: '',
+    client_name: '',
+    company_name: '',
+    salesrep_name: '',
+    contact_number: '',
+    position: '',
+    project_name: '',
+    date: ''
+  });
+
+  const handleInputChange = (e) => {
+  setDocData({
+    ...docData,
+    [e.target.name]: e.target.value
+    });
+  };
+
+    const generateDocument = async () => {
+
+      const res = await axios.post(
+        `${API_BASE_URL}/generate-document`,
+        docData,
+        { responseType: "blob" }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Proposal.docx";
+
+      document.body.appendChild(link);
+      link.click();
+    };
+
   return (
     <div className="view-container">
       <div className="view-header-tabs"  style={{ padding: '20px' }}>
@@ -72,6 +110,20 @@ const Projects = ({ loggedInUser }) => {
             {statusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         </div>
+
+        <button 
+          onClick={() => setShowModal(true)}
+          style={{
+            background: '#2563eb',
+            color: 'white',
+            padding: '8px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Generate Proposal
+        </button>
 
         <div className="search-container" style={{ flex: 1 }}>
           <input
@@ -136,6 +188,36 @@ const Projects = ({ loggedInUser }) => {
           </tbody>
         </table>
       </div>
+
+      {showModal && (
+      <div className="modal-overlay">
+      <div className="modal-box">
+
+        <h3>Generate Project Document</h3>
+
+        <input name="prefix" placeholder="Prefix: Mr/Mrs" onChange={handleInputChange}/>
+        <input name="client_name" placeholder="Client Name" onChange={handleInputChange}/>
+        <input name="position" placeholder="Client Position" onChange={handleInputChange}/>
+        <input name="company_name" placeholder="Company Name" onChange={handleInputChange}/>
+        <input name="project_name" placeholder="Project Name" onChange={handleInputChange}/>
+        <input name="salesrep_name" placeholder="Sales Representative" onChange={handleInputChange}/>
+        <input name="contact_number" placeholder="Sales Repressentative Contact Number" onChange={handleInputChange}/>
+        <input name="date" type="date" onChange={handleInputChange}/>
+
+        <div className="modal-buttons">
+          <button className="generate-btn" onClick={generateDocument}>
+            Generate
+          </button>
+
+          <button className="cancel-btn" onClick={() => setShowModal(false)}>
+            Cancel
+          </button>
+        </div>
+
+      </div>
+    </div>
+    )}
+
     </div>
   );
 };
