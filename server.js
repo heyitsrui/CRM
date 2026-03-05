@@ -9,6 +9,8 @@
   const multer = require('multer');
   const path = require('path');
   const fs = require('fs');
+  const PizZip = require("pizzip");
+  const Docxtemplater = require("docxtemplater");
 
   const app = express();
   app.use(express.json({ limit: "50mb" }));
@@ -1155,6 +1157,52 @@ app.put("/api/timetree/chat/:chatId", async (req, res) => {
     }
 });
 
+app.post("/generate-document", (req, res) => {
+
+  const templatePath = path.join(__dirname, "templates", "Sample_Template.docx");
+
+  const content = fs.readFileSync(templatePath, "binary");
+
+  const zip = new PizZip(content);
+
+  const doc = new Docxtemplater(zip);
+
+  doc.setData({
+    address: req.body.address,
+    client_name: req.body.client_name,
+    company_name: req.body.company_name,
+    salesrep_name: req.body.salesrep_name,
+    contact_number: req.body.contact_number,
+    position: req.body.position,
+    project_name: req.body.project_name,
+    date: req.body.date
+  });
+
+  try {
+
+    doc.render();
+
+    const buf = doc.getZip().generate({
+      type: "nodebuffer"
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Generated_Proposal.docx"
+    );
+
+    res.send(buf);
+
+  } catch (error) {
+
+    console.error(error);
+    res.status(500).send("Error generating document");
+
+  }
+
+});
+
   // ================= SERVER =================
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
