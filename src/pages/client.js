@@ -268,27 +268,27 @@ const Client = ({ userRole }) => {
               <div className="form-grid">
                 <div className="form-group">
                   <label>First Name</label>
-                  <input type="text" name="first_name" required value={formData.first_name} onChange={handleInputChange} />
+                  <input type="text" name="first_name" required placeholder="e.g. Resil" value={formData.first_name} onChange={handleInputChange} />
                 </div>
                 <div className="form-group">
                   <label>Last Name</label>
-                  <input type="text" name="last_name" required value={formData.last_name} onChange={handleInputChange} />
+                  <input type="text" name="last_name" required placeholder="e.g. Fuscablo" value={formData.last_name} onChange={handleInputChange} />
                 </div>
                 <div className="form-group">
                   <label>Email Address</label>
-                  <input type="email" name="email" required value={formData.email} onChange={handleInputChange} />
+                  <input type="email" name="email" required placeholder="e.g. sales@vtic.ph" value={formData.email} onChange={handleInputChange} />
                 </div>
                 <div className="form-group">
                   <label>Phone</label>
-                  <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} />
+                  <input type="text" name="phone" placeholder="+1 555-0123" value={formData.phone} onChange={handleInputChange} />
                 </div>
                 <div className="form-group">
                   <label>Associated Company</label>
-                  <input type="text" name="assoc_company" value={formData.assoc_company} onChange={handleInputChange} />
+                  <input type="text" name="assoc_company" placeholder="e.g. Visible Corp." value={formData.assoc_company} onChange={handleInputChange} />
                 </div>
                 <div className="form-group">
                   <label>Contact Owner</label>
-                  <input type="text" name="contact_owner" value={formData.contact_owner} onChange={handleInputChange} />
+                  <input type="text" name="contact_owner" placeholder="e.g. Resil Fuscablo" value={formData.contact_owner} onChange={handleInputChange} />
                 </div>
                 <div className="form-group">
                   <label>Lead Status</label>
