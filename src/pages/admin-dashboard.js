@@ -315,17 +315,17 @@ export default function Dashboard() {
         return <Projects currentUser={loggedInUser} />;
       case 3: 
         return <Finance loggedInUser={loggedInUser?.role} />;
+      case 4: 
+        return <BOM loggedInUser={loggedInUser?.role} />;
       case 'clients':
         return <Client userRole={loggedInUser?.role} />;
       case 'company':
         return <Company userRole={loggedInUser?.role} />;
-      case 4: 
-        return <BOM loggedInUser={loggedInUser?.role} />;
       case 'my task':
         return <Tasks loggedInUser={loggedInUser} />;
       case 'time tree':
         return <TimeTree loggedInUser={loggedInUser} />;
-      case 6:
+      case 7:
         if (loggedInUser?.role === 'admin') {
           return <UserManagement currentUser={loggedInUser} />;
         } else {
@@ -388,5 +388,4 @@ export default function Dashboard() {
     </div>
   );
 }
-
 
