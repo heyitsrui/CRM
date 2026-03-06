@@ -191,21 +191,26 @@ CREATE TABLE IF NOT EXISTS bom_products (
 
 
 
-CREATE TABLE IF NOT EXISTS bom_drafts (
-  id              INT AUTO_INCREMENT PRIMARY KEY,
-  name            VARCHAR(255)  NOT NULL,
-  vendor          VARCHAR(50)   DEFAULT 'ruijie',
-  status          ENUM('draft', 'forwarded', 'approved', 'rejected') DEFAULT 'draft',
-  created_by      INT           DEFAULT NULL,              -- FK to users.id (optional)
-  forwarded_to    VARCHAR(255)  DEFAULT NULL,              -- email or name of finance contact
-  forward_note    TEXT          DEFAULT NULL,
-  forwarded_at    DATETIME      DEFAULT NULL,
-  saved_at        DATETIME      DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE `bom_drafts` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`vendor` VARCHAR(50) NULL DEFAULT 'ruijie' COLLATE 'utf8mb4_unicode_ci',
+	`status` ENUM('draft','forwarded','approved','rejected') NULL DEFAULT 'draft' COLLATE 'utf8mb4_unicode_ci',
+	`created_by` INT(11) NULL DEFAULT NULL,
+	`forwarded_to` VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_unicode_ci',
+	`forward_note` TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_unicode_ci',
+	`forwarded_at` DATETIME NULL DEFAULT NULL,
+	`saved_at` DATETIME NULL DEFAULT current_timestamp(),
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `idx_status` (`status`) USING BTREE,
+	INDEX `idx_created_by` (`created_by`) USING BTREE,
+	CONSTRAINT `fk_bom_drafts_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON UPDATE RESTRICT ON DELETE SET NULL
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=5
+;
 
-  INDEX idx_status     (status),
-  INDEX idx_created_by (created_by),
-  CONSTRAINT fk_bom_drafts_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 
