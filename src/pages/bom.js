@@ -5,18 +5,19 @@ import '../styles/bom.css';
 const API_BASE_URL = `http://${window.location.hostname}:5000`;
 
 // ─── Company / Vendor Registry ────────────────────────────────────────────────
+// Each vendor maps to one of your 4 companies. Logos use SVG inline or img tag.
 const VENDOR_REGISTRY = {
   ruijie: {
     label: 'Ruijie Networks',
-    logoUrl: 'https://www.ruijienetworks.com/favicon.ico',
+    logoUrl: 'https://www.ruijienetworks.com/favicon.ico', // replace with your hosted logo path
     logoFallback: 'RJ',
     color: '#2563eb',
     bgColor: '#eff6ff',
     available: true,
   },
   cisco: {
-    label: 'Sundray',
-    logoUrl: 'https://www.sundray.com/favicon.ico',
+    label: 'Cisco',
+    logoUrl: 'https://www.cisco.com/favicon.ico',
     logoFallback: 'CS',
     color: '#00539F',
     bgColor: '#eff8ff',
@@ -40,6 +41,7 @@ const VENDOR_REGISTRY = {
   },
 };
 
+// Category badge colors
 const CAT_BADGE_COLOR = {
   'Router': 'blue',
   'Switch': 'purple',
@@ -50,6 +52,7 @@ const CAT_BADGE_COLOR = {
   'Software': 'gray',
 };
 
+// Segment tag colors
 const SEGMENT_COLORS = {
   'Enterprise': { bg: '#dbeafe', text: '#1d4ed8' },
   'SME': { bg: '#dcfce7', text: '#16a34a' },
@@ -260,6 +263,7 @@ function ForwardModal({ draft, onConfirm, onClose }) {
   );
 }
 
+// ─── Import Modal ─────────────────────────────────────────────────────────────
 function ImportModal({ onImport, onClose }) {
   const fileRef = useRef(null);
   const [preview, setPreview] = useState([]);
@@ -269,9 +273,11 @@ function ImportModal({ onImport, onClose }) {
 
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(l => l.trim());
+    // Skip header rows (first 2 lines based on CSV format)
     const dataLines = lines.slice(2);
     const parsed = [];
     for (const line of dataLines) {
+      // Handle quoted fields
       const cols = [];
       let cur = '', inQ = false;
       for (let i = 0; i < line.length; i++) {
@@ -421,6 +427,7 @@ const Bom = ({ loggedInUser }) => {
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [currentDraftName, setCurrentDraftName] = useState('');
   const [forwardTarget, setForwardTarget] = useState(null);
+  const [forwardSuccess, setForwardSuccess] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -429,6 +436,7 @@ const Bom = ({ loggedInUser }) => {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // ── Fetch products from DB ──
   const fetchProducts = useCallback(async (vendorKey) => {
     setLoadingProducts(true);
     try {
@@ -443,6 +451,7 @@ const Bom = ({ loggedInUser }) => {
 
   useEffect(() => { fetchProducts(activeVendor); }, [activeVendor, fetchProducts]);
 
+  // ── Fetch drafts ──
   const fetchDrafts = useCallback(async () => {
     setLoadingDrafts(true);
     try {
@@ -459,6 +468,7 @@ const Bom = ({ loggedInUser }) => {
 
   const vendor = VENDOR_REGISTRY[activeVendor];
 
+  // ── Filter derived data ──
   const segments = useMemo(() => {
     const s = new Set(products.map(p => p.segment).filter(Boolean));
     return [...s].sort();
@@ -498,6 +508,7 @@ const Bom = ({ loggedInUser }) => {
 
   const totalItems = bomList.reduce((s, i) => s + i.qty, 0);
 
+  // ── BOM handlers ──
   const handleAddToBom = useCallback((product) => {
     setBomList(prev => {
       const existing = prev.find(i => i.product_id === product.id && i.vendor === product.vendor);
@@ -511,6 +522,7 @@ const Bom = ({ loggedInUser }) => {
   const handleRemove = (id) => setBomList(prev => prev.filter(i => i.id !== id));
   const handleNoteChange = (id, note) => setBomList(prev => prev.map(i => i.id === id ? { ...i, note } : i));
 
+  // ── Draft handlers ──
   const handleSaveDraft = async (name) => {
     try {
       const payload = {
@@ -571,6 +583,7 @@ const Bom = ({ loggedInUser }) => {
     }
   };
 
+  // ── Import handler ──
   const handleImport = async (rows, vendorKey) => {
     const res = await axios.post(`${API_BASE_URL}/api/bom/products/import`, { products: rows, vendor: vendorKey });
     if (!res.data.success) throw new Error(res.data.error || 'Import failed');
@@ -586,8 +599,12 @@ const Bom = ({ loggedInUser }) => {
     setSearchQuery('');
   };
 
+  const isAdmin = loggedInUser?.role === 'admin';
+
   return (
     <div className="bom-root">
+
+      {/* Header */}
       <div className="bom-header">
         <div>
           <h1>BOM Management</h1>
@@ -595,9 +612,11 @@ const Bom = ({ loggedInUser }) => {
         </div>
         <div className="bom-header-actions">
           {currentDraftName && <span className="current-draft-label">📝 {currentDraftName}</span>}
-          <button className="bom-import-btn" onClick={() => setShowImportModal(true)}>
-            📥 Import Products
-          </button>
+          {isAdmin && (
+            <button className="bom-import-btn" onClick={() => setShowImportModal(true)}>
+              📥 Import Products
+            </button>
+          )}
           {bomList.length > 0 && (
             <button className="bom-save-draft-btn" onClick={() => setShowSaveDraftModal(true)}>
               💾 Save Draft
@@ -606,10 +625,12 @@ const Bom = ({ loggedInUser }) => {
         </div>
       </div>
 
+      {/* Toast */}
       {toast && (
         <div className={`toast-${toast.type || 'success'}`}>{toast.msg}</div>
       )}
 
+      {/* Tabs */}
       <div className="bom-tabs">
         <button className={`tab-btn${tab === 'catalog' ? ' active' : ''}`} onClick={() => setTab('catalog')}>
           Product Catalog
@@ -622,8 +643,10 @@ const Bom = ({ loggedInUser }) => {
         </button>
       </div>
 
+      {/* ── CATALOG TAB ── */}
       {tab === 'catalog' && (
         <div>
+          {/* Vendor selector */}
           <div className="vendor-selector">
             {Object.entries(VENDOR_REGISTRY).map(([key, v]) => (
               <VendorCard key={key} vendorKey={key} vendor={v} active={activeVendor === key} onClick={handleVendorSwitch} />
@@ -640,6 +663,7 @@ const Bom = ({ loggedInUser }) => {
             <div className="catalog-empty"><span>⏳ Loading products…</span></div>
           ) : (
             <>
+              {/* Search */}
               <div className="bom-search-bar">
                 <input
                   className="bom-search-input"
@@ -652,6 +676,7 @@ const Bom = ({ loggedInUser }) => {
                 )}
               </div>
 
+              {/* Segment Pills (company-based tagging) */}
               <div style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginRight: 8 }}>Segment</span>
                 <div className="bom-category-pills" style={{ display: 'inline-flex' }}>
@@ -669,6 +694,7 @@ const Bom = ({ loggedInUser }) => {
                 </div>
               </div>
 
+              {/* Category Pills */}
               <div style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginRight: 8 }}>Category</span>
                 <div className="bom-category-pills" style={{ display: 'inline-flex' }}>
@@ -686,6 +712,7 @@ const Bom = ({ loggedInUser }) => {
                 </div>
               </div>
 
+              {/* Subcategory Pills */}
               {activeCategory !== 'ALL' && subcategories.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginRight: 8 }}>Sub-Category</span>
@@ -724,7 +751,7 @@ const Bom = ({ loggedInUser }) => {
                 <div className="catalog-empty">
                   <div style={{ fontSize: 36 }}>🔍</div>
                   <p>No products match your filters.</p>
-                  {products.length === 0 && (
+                  {isAdmin && products.length === 0 && (
                     <button className="browse-btn" onClick={() => setShowImportModal(true)}>📥 Import Products Now</button>
                   )}
                 </div>
@@ -734,6 +761,7 @@ const Bom = ({ loggedInUser }) => {
         </div>
       )}
 
+      {/* ── BOM LIST TAB ── */}
       {tab === 'bom' && (
         <div>
           {bomList.length === 0 ? (
@@ -785,6 +813,7 @@ const Bom = ({ loggedInUser }) => {
         </div>
       )}
 
+      {/* ── DRAFTS TAB ── */}
       {tab === 'drafts' && (
         <div>
           {loadingDrafts ? (
@@ -807,6 +836,7 @@ const Bom = ({ loggedInUser }) => {
         </div>
       )}
 
+      {/* ── Modals ── */}
       {showSaveDraftModal && (
         <SaveDraftModal existingName={currentDraftName} onSave={handleSaveDraft} onClose={() => setShowSaveDraftModal(false)} />
       )}
