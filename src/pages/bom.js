@@ -1,202 +1,218 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import axios from 'axios';
 import '../styles/bom.css';
 
 const API_BASE_URL = `http://${window.location.hostname}:5000`;
 
-// ── Vendor registry (add new vendors here) ───────────────────────
-const VENDORS = [
-  { key: 'ruijie',  label: 'Ruijie',  logo: '🔷', color: '#2563eb' },
-  { key: 'sundray', label: 'Sundray', logo: '🟢', color: '#16a34a' },
-];
-
-// ── Category display config ────────────────────────────────────
-const CAT_CONFIG = {
-  ROUTER:       { label: 'Router',          icon: '⬡', badge: 'blue'   },
-  SWITCHES:     { label: 'Switches',         icon: '⬢', badge: 'purple' },
-  ACCESS_POINT: { label: 'Access Point',     icon: '◈', badge: 'green'  },
-  FIREWALL:     { label: 'Firewall',         icon: '◉', badge: 'rose'   },
-  SOFTWARE:     { label: 'Software',         icon: '◫', badge: 'orange' },
-  ACCESSORY:    { label: 'Accessory',        icon: '◌', badge: 'gray'   },
-  OTHER:        { label: 'Other',            icon: '◎', badge: 'gray'   },
+// ─── Company / Vendor Registry ────────────────────────────────────────────────
+const VENDOR_REGISTRY = {
+  ruijie: {
+    label: 'Ruijie Networks',
+    logoUrl: 'https://www.ruijienetworks.com/favicon.ico',
+    logoFallback: 'RJ',
+    color: '#2563eb',
+    bgColor: '#eff6ff',
+    available: true,
+  },
+  cisco: {
+    label: 'Sundray',
+    logoUrl: 'https://www.sundray.com/favicon.ico',
+    logoFallback: 'CS',
+    color: '#00539F',
+    bgColor: '#eff8ff',
+    available: false,
+  },
+  aruba: {
+    label: 'Aruba Networks',
+    logoUrl: 'https://www.arubanetworks.com/favicon.ico',
+    logoFallback: 'AR',
+    color: '#FF8300',
+    bgColor: '#fff7ed',
+    available: false,
+  },
+  ubiquiti: {
+    label: 'Ubiquiti',
+    logoUrl: 'https://www.ui.com/favicon.ico',
+    logoFallback: 'UI',
+    color: '#0559C9',
+    bgColor: '#eff6ff',
+    available: false,
+  },
 };
 
-const STATUS_CONFIG = {
-  draft:      { label: 'Draft',     color: '#6b7280', bg: '#f3f4f6' },
-  forwarded:  { label: 'Pending',   color: '#d97706', bg: '#fef3c7' },
-  approved:   { label: 'Approved',  color: '#059669', bg: '#d1fae5' },
-  rejected:   { label: 'Rejected',  color: '#dc2626', bg: '#fee2e2' },
+const CAT_BADGE_COLOR = {
+  'Router': 'blue',
+  'Switch': 'purple',
+  'Wireless / AP': 'green',
+  'Access Controller': 'teal',
+  'Firewall / Security': 'rose',
+  'Switch Accessory': 'orange',
+  'Software': 'gray',
 };
 
-const formatDate = (ts) => {
-  if (!ts) return '—';
-  return new Date(ts).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+const SEGMENT_COLORS = {
+  'Enterprise': { bg: '#dbeafe', text: '#1d4ed8' },
+  'SME': { bg: '#dcfce7', text: '#16a34a' },
+  'Data Center': { bg: '#f3e8ff', text: '#7c3aed' },
+  'Enterprise / Data Center': { bg: '#fef3c7', text: '#d97706' },
+  'SME / Enterprise': { bg: '#fce7f3', text: '#be185d' },
+  'Enterprise/SME': { bg: '#fce7f3', text: '#be185d' },
 };
 
 let _nextId = 1;
 const uid = () => _nextId++;
 
-// ── API helpers ───────────────────────────────────────────────
-// Matches your server.js pattern: no session cookies, userId passed explicitly
-async function apiFetch(path, opts = {}) {
-  const res = await fetch(`${API_BASE_URL}/api/bom${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...opts,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+const formatDate = (ts) => {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
-// ── Sub-components ────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Badge({ children, color = 'blue' }) {
   return <span className={`badge badge-${color}`}>{children}</span>;
 }
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+function SegmentTag({ segment }) {
+  const style = SEGMENT_COLORS[segment] || { bg: '#f3f4f6', text: '#374151' };
   return (
-    <span className="status-badge" style={{ color: cfg.color, background: cfg.bg }}>
-      {cfg.label}
+    <span style={{ background: style.bg, color: style.text, fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+      {segment}
     </span>
   );
 }
 
-function UserChip({ name, email, role, avatar }) {
+function VendorLogo({ vendor }) {
+  const [imgError, setImgError] = useState(false);
+  const v = VENDOR_REGISTRY[vendor];
+  if (!v) return null;
+
+  if (!imgError) {
+    return (
+      <img
+        src={v.logoUrl}
+        alt={v.label}
+        className="vendor-logo-img"
+        onError={() => setImgError(true)}
+        style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 4 }}
+      />
+    );
+  }
   return (
-    <div className="user-chip">
-      {avatar
-        ? <img src={avatar} alt={name} className="user-chip-avatar" />
-        : <div className="user-chip-initials">{name?.[0]?.toUpperCase() || '?'}</div>
-      }
-      <div className="user-chip-info">
-        <span className="user-chip-name">{name}</span>
-        <span className="user-chip-meta">{email} · {role}</span>
-      </div>
-    </div>
+    <span className="vendor-logo-fallback" style={{ background: v.color, color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 4, padding: '4px 6px' }}>
+      {v.logoFallback}
+    </span>
   );
 }
 
-function SpecsModal({ product, onClose }) {
+function VendorCard({ vendorKey, vendor, active, onClick }) {
+  const [imgError, setImgError] = useState(false);
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <h3 className="modal-title">{product.model}</h3>
-            <span className="modal-sub">{product.sub_category} · {product.product_category}</span>
-          </div>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <div className="specs-grid">
-            {[
-              ['Segment',         product.segment],
-              ['Category',        product.product_category],
-              ['Sub-Category',    product.sub_category],
-              ['Wi-Fi Standard',  product.wireless_standard],
-              ['Deployment',      product.deployment],
-              ['Management',      product.management_type],
-              ['PoE',             product.poe],
-              ['Switch Role',     product.switch_role],
-              ['Port Speed',      product.switch_port_speed],
-              ['Notes',           product.notes || product.product_notes],
-            ].filter(([, v]) => v).map(([label, value]) => (
-              <div key={label} className="spec-row">
-                <span className="spec-label">{label}</span>
-                <span className="spec-value">{value}</span>
-              </div>
-            ))}
-            <div className="specs-tags">
-              {product.tag_dc         ? <Badge color="blue">Data Center</Badge>   : null}
-              {product.tag_enterprise ? <Badge color="purple">Enterprise</Badge>  : null}
-              {product.tag_sme        ? <Badge color="green">SME</Badge>          : null}
-            </div>
-          </div>
-        </div>
+    <button
+      className={`vendor-card${active ? ' active' : ''}${!vendor.available ? ' unavailable' : ''}`}
+      onClick={() => vendor.available && onClick(vendorKey)}
+      style={{ '--vendor-color': vendor.color, '--vendor-bg': vendor.bgColor }}
+    >
+      <div className="vendor-card-logo">
+        {!imgError ? (
+          <img src={vendor.logoUrl} alt={vendor.label} onError={() => setImgError(true)}
+            style={{ width: 36, height: 36, objectFit: 'contain' }} />
+        ) : (
+          <span style={{ background: vendor.color, color: '#fff', fontWeight: 700, fontSize: 13, borderRadius: 6, padding: '6px 8px' }}>
+            {vendor.logoFallback}
+          </span>
+        )}
       </div>
-    </div>
+      <span className="vendor-label">{vendor.label}</span>
+      {!vendor.available && <span className="vendor-soon">Coming Soon</span>}
+      {active && <span className="vendor-check">✓</span>}
+    </button>
   );
 }
 
 function ProductCard({ product, onAdd }) {
-  const [showSpecs, setShowSpecs] = useState(false);
-  const cat = CAT_CONFIG[product.categoryKey] || CAT_CONFIG.OTHER;
   return (
-    <>
-      <div className="product-card">
-        <div className="product-card-header">
-          <span className="product-card-model">{product.model}</span>
-          <Badge color={cat.badge}>{cat.label}</Badge>
-        </div>
-        <span className="product-card-sub">{product.sub_category}</span>
-        {product.wireless_standard && (
-          <span className="product-card-tag">{product.wireless_standard}</span>
-        )}
-        {product.poe && product.poe !== 'Non-PoE' && (
-          <span className="product-card-tag poe">{product.poe}</span>
-        )}
-        <div className="product-card-actions">
-          <button className="product-card-specs-btn" onClick={() => setShowSpecs(true)}>Specs</button>
-          <button className="product-card-add-btn" onClick={() => onAdd(product)}>+ Add</button>
-        </div>
+    <div className="product-card">
+      <div className="product-card-header">
+        <span className="product-card-model">{product.model}</span>
+        <Badge color={CAT_BADGE_COLOR[product.product_category] || 'blue'}>{product.product_category}</Badge>
       </div>
-      {showSpecs && <SpecsModal product={product} onClose={() => setShowSpecs(false)} />}
-    </>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+        <SegmentTag segment={product.segment} />
+        {product.poe && product.poe !== 'Non-PoE' && product.poe !== 'N/A' && (
+          <span style={{ fontSize: 10, background: '#d1fae5', color: '#065f46', padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>{product.poe}</span>
+        )}
+        {product.wireless_standard && product.wireless_standard !== '-' && (
+          <span style={{ fontSize: 10, background: '#ede9fe', color: '#5b21b6', padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>{product.wireless_standard}</span>
+        )}
+      </div>
+      <span className="product-card-sub" style={{ marginTop: 6, display: 'block', fontSize: 12, color: '#6b7280' }}>{product.sub_category}</span>
+      {product.notes && (
+        <span style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginTop: 3 }}>{product.notes}</span>
+      )}
+      <div className="product-card-actions">
+        <button className="product-card-add-btn" onClick={() => onAdd(product)}>+ Add to BOM</button>
+      </div>
+    </div>
   );
 }
 
 function BomLineItem({ item, onQtyChange, onRemove, onNoteChange }) {
-  const [showSpecs, setShowSpecs] = useState(false);
-  const cat = CAT_CONFIG[item.categoryKey] || CAT_CONFIG.OTHER;
   return (
-    <>
-      <tr>
-        <td>
-          <div className="bom-table-model">{item.model}</div>
-          <div className="bom-table-vendor">{item.vendor ? item.vendor.charAt(0).toUpperCase() + item.vendor.slice(1) : 'Ruijie'}</div>
-        </td>
-        <td><Badge color={cat.badge}>{cat.label}</Badge></td>
-        <td className="bom-table-sub">{item.sub_category}</td>
-        <td>
-          <div className="qty-controls">
-            <button className="qty-btn" onClick={() => onQtyChange(item._uid, Math.max(1, item.quantity - 1))}>−</button>
-            <input
-              className="qty-input"
-              type="number"
-              min={1}
-              value={item.quantity}
-              onChange={e => onQtyChange(item._uid, Math.max(1, parseInt(e.target.value) || 1))}
-            />
-            <button className="qty-btn" onClick={() => onQtyChange(item._uid, item.quantity + 1)}>+</button>
-          </div>
-        </td>
-        <td>
-          <input
-            className="note-input"
-            placeholder="Notes…"
-            value={item.note}
-            onChange={e => onNoteChange(item._uid, e.target.value)}
-          />
-        </td>
-        <td>
-          <div className="bom-row-actions">
-            <button className="specs-btn-sm" onClick={() => setShowSpecs(true)}>Specs</button>
-            <button className="remove-btn" onClick={() => onRemove(item._uid)}>✕</button>
-          </div>
-        </td>
-      </tr>
-      {showSpecs && <SpecsModal product={item} onClose={() => setShowSpecs(false)} />}
-    </>
+    <tr>
+      <td>
+        <div className="bom-table-model">{item.model}</div>
+        <div className="bom-table-vendor" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <VendorLogo vendor={item.vendor} />
+          <span>{VENDOR_REGISTRY[item.vendor]?.label || item.vendor}</span>
+        </div>
+      </td>
+      <td><Badge color={CAT_BADGE_COLOR[item.product_category] || 'blue'}>{item.product_category}</Badge></td>
+      <td className="bom-table-sub">
+        <div>{item.sub_category}</div>
+        <SegmentTag segment={item.segment} />
+      </td>
+      <td>
+        <div className="qty-controls">
+          <button className="qty-btn" onClick={() => onQtyChange(item.id, Math.max(1, item.qty - 1))}>−</button>
+          <input className="qty-input" type="number" min={1} value={item.qty}
+            onChange={e => onQtyChange(item.id, Math.max(1, parseInt(e.target.value) || 1))} />
+          <button className="qty-btn" onClick={() => onQtyChange(item.id, item.qty + 1)}>+</button>
+        </div>
+      </td>
+      <td>
+        <input className="note-input" placeholder="Notes…" value={item.note}
+          onChange={e => onNoteChange(item.id, e.target.value)} />
+      </td>
+      <td>
+        <button className="remove-btn" onClick={() => onRemove(item.id)}>✕</button>
+      </td>
+    </tr>
   );
 }
 
-function SaveDraftModal({ onSave, onClose, existingName, saving }) {
+function DraftCard({ draft, onLoad, onDelete, onForward }) {
+  return (
+    <div className="draft-card">
+      <div className="draft-card-top">
+        <div>
+          <div className="draft-card-name">{draft.name}</div>
+          <div className="draft-card-meta">
+            {draft.item_count ?? draft.items?.length ?? 0} items · {formatDate(draft.saved_at || draft.savedAt)}
+          </div>
+        </div>
+        <span className={`draft-status-badge ${draft.status}`}>{draft.status}</span>
+      </div>
+      <div className="draft-card-actions">
+        <button className="draft-btn-load" onClick={() => onLoad(draft)}>Load</button>
+        <button className="draft-btn-forward" onClick={() => onForward(draft)}>→ Forward to Finance</button>
+        <button className="draft-btn-delete" onClick={() => onDelete(draft.id)}>Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function SaveDraftModal({ onSave, onClose, existingName }) {
   const [name, setName] = useState(existingName || `BOM Draft ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -210,9 +226,7 @@ function SaveDraftModal({ onSave, onClose, existingName, saving }) {
           <input className="modal-input" value={name} onChange={e => setName(e.target.value)} autoFocus />
           <div className="modal-footer-actions">
             <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-            <button className="modal-save-btn" disabled={saving || !name.trim()} onClick={() => onSave(name.trim())}>
-              {saving ? 'Saving…' : 'Save Draft'}
-            </button>
+            <button className="modal-save-btn" onClick={() => name.trim() && onSave(name.trim())}>Save Draft</button>
           </div>
         </div>
       </div>
@@ -220,7 +234,8 @@ function SaveDraftModal({ onSave, onClose, existingName, saving }) {
   );
 }
 
-function ForwardModal({ draft, onConfirm, onClose, submitting, loggedInUser }) {
+function ForwardModal({ draft, onConfirm, onClose }) {
+  const [recipient, setRecipient] = useState('');
   const [note, setNote] = useState('');
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -230,34 +245,14 @@ function ForwardModal({ draft, onConfirm, onClose, submitting, loggedInUser }) {
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <p className="modal-desc">
-            You are forwarding <strong>{draft.name}</strong> ({draft.item_count} items, {draft.total_units} units) for pricing.
-          </p>
-
-          {/* Creator info card */}
-          <div className="po-creator-card">
-            <span className="po-creator-label">Purchase Order Created By</span>
-            <UserChip
-              name={loggedInUser?.name}
-              email={loggedInUser?.email}
-              role={loggedInUser?.role}
-              avatar={loggedInUser?.avatar}
-            />
-          </div>
-
-          <label className="modal-label" style={{ marginTop: 14 }}>Note for Finance (optional)</label>
-          <textarea
-            className="modal-textarea"
-            placeholder="Any instructions or context for the finance team…"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            rows={3}
-          />
+          <p className="modal-desc">Forwarding <strong>{draft.name}</strong> ({draft.item_count ?? draft.items?.length} items) for pricing.</p>
+          <label className="modal-label">Finance Contact / Email</label>
+          <input className="modal-input" placeholder="e.g. finance@company.com" value={recipient} onChange={e => setRecipient(e.target.value)} />
+          <label className="modal-label" style={{ marginTop: 12 }}>Note (optional)</label>
+          <textarea className="modal-textarea" placeholder="Any instructions for the finance team…" value={note} onChange={e => setNote(e.target.value)} rows={3} />
           <div className="modal-footer-actions">
             <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-            <button className="modal-save-btn" disabled={submitting} onClick={() => onConfirm(draft.id, note)}>
-              {submitting ? 'Sending…' : '→ Forward to Finance'}
-            </button>
+            <button className="modal-save-btn" onClick={() => onConfirm(draft, recipient, note)} disabled={!recipient.trim()}>Send</button>
           </div>
         </div>
       </div>
@@ -265,565 +260,480 @@ function ForwardModal({ draft, onConfirm, onClose, submitting, loggedInUser }) {
   );
 }
 
-function RejectModal({ po, onConfirm, onClose, submitting }) {
-  const [reason, setReason] = useState('');
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box modal-sm" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">Reject Purchase Order</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <p className="modal-desc">Rejecting <strong>{po.name}</strong>. Provide a reason (optional).</p>
-          <textarea
-            className="modal-textarea"
-            placeholder="Reason for rejection…"
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            rows={3}
-            autoFocus
-          />
-          <div className="modal-footer-actions">
-            <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-            <button className="modal-reject-btn" disabled={submitting} onClick={() => onConfirm(po.id, reason)}>
-              {submitting ? 'Rejecting…' : 'Confirm Reject'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+function ImportModal({ onImport, onClose }) {
+  const fileRef = useRef(null);
+  const [preview, setPreview] = useState([]);
+  const [error, setError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [vendor, setVendor] = useState('ruijie');
 
-// Purchase Order card for Finance/Admin view
-function POCard({ po, isAdmin, userRole, onApprove, onReject }) {
-  const [expanded, setExpanded] = useState(false);
-  const [items, setItems] = useState([]);
-  const [loadingItems, setLoadingItems] = useState(false);
-
-  const loadItems = async () => {
-    if (items.length > 0) { setExpanded(e => !e); return; }
-    setLoadingItems(true);
-    try {
-      const data = await apiFetch(`/purchase-orders/${po.id}/items?userRole=${userRole}`);
-      setItems(data.items || []);
-      setExpanded(true);
-    } catch (e) {
-      console.error(e);
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(l => l.trim());
+    const dataLines = lines.slice(2);
+    const parsed = [];
+    for (const line of dataLines) {
+      const cols = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') { inQ = !inQ; }
+        else if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+        else { cur += line[i]; }
+      }
+      cols.push(cur.trim());
+      if (cols.length >= 3 && cols[0]) {
+        parsed.push({
+          model: cols[0],
+          segment: cols[1] || '',
+          product_category: cols[2] || '',
+          sub_category: cols[3] || '',
+          wireless_standard: cols[4] || '',
+          deployment: cols[5] || '',
+          management_type: cols[6] || '',
+          poe: cols[7] || '',
+          tag_dc: cols[8]?.includes('✓') ? 1 : 0,
+          tag_enterprise: cols[9]?.includes('✓') ? 1 : 0,
+          tag_sme: cols[10]?.includes('✓') ? 1 : 0,
+          notes: cols[13] || cols[11] || '',
+          vendor: vendor,
+        });
+      }
     }
-    setLoadingItems(false);
+    return parsed;
+  };
+
+  const handleFileChange = (e) => {
+    setError('');
+    const file = e.target.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['csv'].includes(ext)) { setError('Only CSV files are supported for import.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const rows = parseCSV(ev.target.result);
+        if (!rows.length) { setError('No valid product rows found in file.'); return; }
+        setPreview(rows.slice(0, 5));
+        fileRef.current._parsed = rows;
+      } catch (err) {
+        setError('Failed to parse file. Please ensure it matches the expected format.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (!fileRef.current?._parsed?.length) { setError('Please select a valid file first.'); return; }
+    setImporting(true);
+    try {
+      await onImport(fileRef.current._parsed, vendor);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Import failed. Please try again.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
-    <div className="po-card">
-      <div className="po-card-top">
-        <div className="po-card-left">
-          <div className="po-card-name">{po.name}</div>
-          <div className="po-card-meta">
-            {po.item_count} items · {po.total_units} units · Forwarded {formatDate(po.forwarded_at)}
-          </div>
-          {/* Creator info — always visible */}
-          <UserChip
-            name={po.creator_name}
-            email={po.creator_email}
-            role={po.creator_role}
-            avatar={po.creator_avatar}
-          />
-          {po.finance_note && (
-            <div className="po-finance-note">📝 {po.finance_note}</div>
-          )}
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">📥 Import Products from CSV</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="po-card-right">
-          <StatusBadge status={po.status} />
-          {po.status === 'approved' && po.reviewer_name && (
-            <div className="po-reviewed-by">✅ Approved by {po.reviewer_name} · {formatDate(po.reviewed_at)}</div>
-          )}
-          {po.status === 'rejected' && (
-            <div className="po-reviewed-by rejected">
-              ❌ Rejected by {po.reviewer_name} · {formatDate(po.reviewed_at)}
-              {po.reject_reason && <div className="po-reject-reason">"{po.reject_reason}"</div>}
+        <div className="modal-body">
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#0369a1' }}>
+            <strong>Expected CSV columns:</strong> Product Model, Segment, Product Category, Sub-Category, Wireless Standard, Deployment, Management Type, PoE, DC Tag, Enterprise Tag, SME Tag, Notes
+          </div>
+
+          <label className="modal-label">Vendor / Company</label>
+          <select className="modal-input" value={vendor} onChange={e => setVendor(e.target.value)} style={{ marginBottom: 14 }}>
+            {Object.entries(VENDOR_REGISTRY).map(([key, v]) => (
+              <option key={key} value={key}>{v.label}</option>
+            ))}
+          </select>
+
+          <label className="modal-label">Select CSV File</label>
+          <input ref={fileRef} type="file" accept=".csv" onChange={handleFileChange}
+            style={{ display: 'block', marginBottom: 14, padding: '8px', border: '1px dashed #d1d5db', borderRadius: 8, width: '100%', cursor: 'pointer', background: '#fafafa' }} />
+
+          {error && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 10 }}>⚠ {error}</p>}
+
+          {preview.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+                Preview ({fileRef.current?._parsed?.length} rows found — showing first 5):
+              </p>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      {['Model', 'Segment', 'Category', 'Sub-Category', 'PoE'].map(h => (
+                        <th key={h} style={{ padding: '5px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((row, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #f3f4f6', fontWeight: 600 }}>{row.model}</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #f3f4f6' }}>{row.segment}</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #f3f4f6' }}>{row.product_category}</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #f3f4f6' }}>{row.sub_category}</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #f3f4f6' }}>{row.poe}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
+
+          <div className="modal-footer-actions">
+            <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
+            <button className="modal-save-btn" onClick={handleImport} disabled={importing || !preview.length}>
+              {importing ? '⏳ Importing…' : `📥 Import ${fileRef.current?._parsed?.length || 0} Products`}
+            </button>
+          </div>
         </div>
       </div>
-
-      <div className="po-card-actions">
-        <button className="po-toggle-btn" onClick={loadItems} disabled={loadingItems}>
-          {loadingItems ? 'Loading…' : expanded ? '▲ Hide Items' : '▼ View Items'}
-        </button>
-        {isAdmin && po.status === 'forwarded' && (
-          <>
-            <button className="po-approve-btn" onClick={() => onApprove(po)}>✓ Approve</button>
-            <button className="po-reject-btn-sm" onClick={() => onReject(po)}>✕ Reject</button>
-          </>
-        )}
-      </div>
-
-      {expanded && items.length > 0 && (
-        <div className="po-items-table-wrap">
-          <table className="po-items-table">
-            <thead>
-              <tr>
-                <th>Model</th>
-                <th>Category</th>
-                <th>Sub-Category</th>
-                <th>Qty</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(item => {
-                const cat = CAT_CONFIG[item.categoryKey] || CAT_CONFIG.OTHER;
-                return (
-                  <tr key={item.id}>
-                    <td>{item.model}</td>
-                    <td><Badge color={cat.badge}>{cat.label}</Badge></td>
-                    <td>{item.sub_category}</td>
-                    <td><strong>{item.quantity}</strong></td>
-                    <td>{item.note || '—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Main BOM Component ────────────────────────────────────────
+// ─── Main BOM Component ───────────────────────────────────────────────────────
 const Bom = ({ loggedInUser }) => {
-  const isAdmin   = loggedInUser?.role === 'admin';
-  const isFinance = loggedInUser?.role === 'finance';
-  const canSeePOs = isAdmin || isFinance;
+  const [activeVendor, setActiveVendor] = useState('ruijie');
+  const [activeSegment, setActiveSegment] = useState('ALL');
+  const [activeCategory, setActiveCategory] = useState('ALL');
+  const [activeSubcategory, setActiveSubcategory] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Vendor & Catalog state
-  const [activeVendor,    setActiveVendor]    = useState('ruijie');
-  const [products,        setProducts]        = useState([]);
-  const [categories,      setCategories]      = useState({});
-  const [activeCategory,  setActiveCategory]  = useState('ALL');
-  const [activeSub,       setActiveSub]       = useState('ALL');
-  const [searchQuery,     setSearchQuery]     = useState('');
+  const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
-  // BOM list state
-  const [bomList,         setBomList]         = useState([]);
-  const [tab,             setTab]             = useState(canSeePOs ? 'purchase-orders' : 'catalog');
+  const [bomList, setBomList] = useState([]);
+  const [tab, setTab] = useState('catalog');
 
-  // Draft state
-  const [drafts,          setDrafts]          = useState([]);
-  const [loadingDrafts,   setLoadingDrafts]   = useState(false);
-  const [showSaveDraft,   setShowSaveDraft]   = useState(false);
-  const [savingDraft,     setSavingDraft]     = useState(false);
+  const [drafts, setDrafts] = useState([]);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [showSaveDraftModal, setShowSaveDraftModal] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState(null);
   const [currentDraftName, setCurrentDraftName] = useState('');
-
-  // PO state
-  const [purchaseOrders,  setPurchaseOrders]  = useState([]);
-  const [loadingPOs,      setLoadingPOs]      = useState(false);
-  const [forwardTarget,   setForwardTarget]   = useState(null);
-  const [rejectTarget,    setRejectTarget]    = useState(null);
-  const [submitting,      setSubmitting]      = useState(false);
-
-  // Toast
+  const [forwardTarget, setForwardTarget] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // Import state
-  const [importing, setImporting]   = useState(false);
-  const [importResult, setImportResult] = useState(null);
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // ── Vendor switch ──
-  const handleVendorSwitch = (key) => {
-    setActiveVendor(key);
-    setActiveCategory('ALL');
-    setActiveSub('ALL');
-    setSearchQuery('');
-  };
-
-  // ── Import CSV ──
-  const handleImportCSV = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.name.endsWith('.csv')) {
-      showToast('Please upload a .csv file', 'error');
-      return;
-    }
-    setImporting(true);
-    setImportResult(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userRole', loggedInUser?.role);
-      formData.append('vendor', activeVendor);
-      const res = await fetch(`${API_BASE_URL}/api/bom/products/import`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        setImportResult({ type: 'success', msg: data.message });
-        await fetchProducts();
-        await fetchCategories();
-      } else {
-        setImportResult({ type: 'error', msg: data.error });
-      }
-    } catch (err) {
-      setImportResult({ type: 'error', msg: err.message });
-    }
-    setImporting(false);
-    // reset file input
-    e.target.value = '';
-  };
-
-  // ── Fetch products ──
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (vendorKey) => {
     setLoadingProducts(true);
     try {
-      const params = new URLSearchParams({ vendor: activeVendor });
-      if (activeCategory !== 'ALL') params.set('category', activeCategory);
-      if (activeSub !== 'ALL')      params.set('subcategory', activeSub);
-      if (searchQuery.trim())       params.set('search', searchQuery.trim());
-      const data = await apiFetch(`/products?${params}`);
-      setProducts(data.products || []);
-    } catch (e) {
-      showToast('Failed to load products: ' + e.message, 'error');
+      const res = await axios.get(`${API_BASE_URL}/api/bom/products`, { params: { vendor: vendorKey } });
+      if (res.data.success) setProducts(res.data.products);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+    } finally {
+      setLoadingProducts(false);
     }
-    setLoadingProducts(false);
-  }, [activeVendor, activeCategory, activeSub, searchQuery]);
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const data = await apiFetch(`/products/categories?vendor=${activeVendor}`);
-      setCategories(data.categories || {});
-    } catch (e) { console.error(e); }
   }, []);
+
+  useEffect(() => { fetchProducts(activeVendor); }, [activeVendor, fetchProducts]);
 
   const fetchDrafts = useCallback(async () => {
-    if (!loggedInUser?.id) return;
     setLoadingDrafts(true);
     try {
-      const data = await apiFetch(`/drafts?userId=${loggedInUser.id}`);
-      setDrafts(data.drafts || []);
-    } catch (e) {
-      showToast('Failed to load drafts: ' + e.message, 'error');
+      const res = await axios.get(`${API_BASE_URL}/api/bom/drafts`);
+      if (res.data.success) setDrafts(res.data.drafts);
+    } catch (err) {
+      console.error('Failed to load drafts:', err);
+    } finally {
+      setLoadingDrafts(false);
     }
-    setLoadingDrafts(false);
-  }, [loggedInUser]);
-
-  const fetchPurchaseOrders = useCallback(async (statusFilter) => {
-    if (!loggedInUser?.id) return;
-    setLoadingPOs(true);
-    try {
-      const params = new URLSearchParams({ userId: loggedInUser.id, userRole: loggedInUser.role });
-      if (statusFilter) params.set('status', statusFilter);
-      const data = await apiFetch(`/purchase-orders?${params}`);
-      setPurchaseOrders(data.purchase_orders || []);
-    } catch (e) {
-      showToast('Failed to load purchase orders: ' + e.message, 'error');
-    }
-    setLoadingPOs(false);
-  }, [loggedInUser]);
-
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
-  useEffect(() => { if (tab === 'catalog') fetchProducts(); }, [tab, fetchProducts]);
-  useEffect(() => { if (tab === 'drafts') fetchDrafts(); }, [tab, fetchDrafts]);
-  useEffect(() => { if (tab === 'purchase-orders') fetchPurchaseOrders(); }, [tab, fetchPurchaseOrders]);
-
-  // Debounce search
-  useEffect(() => {
-    if (tab !== 'catalog') return;
-    const t = setTimeout(fetchProducts, 300);
-    return () => clearTimeout(t);
-  }, [searchQuery, fetchProducts, tab]);
-
-  // ── BOM handlers ──
-  const handleAddToBom = useCallback((product) => {
-    setBomList(prev => {
-      const existing = prev.find(i => i.id === product.id);
-      if (existing) return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...product, _uid: uid(), quantity: 1, note: '' }];
-    });
   }, []);
 
-  const handleQtyChange   = (_uid, qty)  => setBomList(p => p.map(i => i._uid === _uid ? { ...i, quantity: qty } : i));
-  const handleRemove      = (_uid)       => setBomList(p => p.filter(i => i._uid !== _uid));
-  const handleNoteChange  = (_uid, note) => setBomList(p => p.map(i => i._uid === _uid ? { ...i, note } : i));
-  const totalUnits = bomList.reduce((s, i) => s + i.quantity, 0);
+  useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
 
-  // ── Save draft ──
-  const handleSaveDraft = async (name) => {
-    setSavingDraft(true);
-    try {
-      await apiFetch('/drafts', {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: loggedInUser?.id,
-          name,
-          items: bomList.map(i => ({ product_id: i.id, quantity: i.quantity, note: i.note })),
-        }),
-      });
-      setCurrentDraftName(name);
-      setShowSaveDraft(false);
-      showToast(`Draft "${name}" saved.`);
-    } catch (e) {
-      showToast('Save failed: ' + e.message, 'error');
+  const vendor = VENDOR_REGISTRY[activeVendor];
+
+  const segments = useMemo(() => {
+    const s = new Set(products.map(p => p.segment).filter(Boolean));
+    return [...s].sort();
+  }, [products]);
+
+  const categories = useMemo(() => {
+    let list = products;
+    if (activeSegment !== 'ALL') list = list.filter(p => p.segment === activeSegment);
+    const c = new Set(list.map(p => p.product_category).filter(Boolean));
+    return [...c].sort();
+  }, [products, activeSegment]);
+
+  const subcategories = useMemo(() => {
+    let list = products;
+    if (activeSegment !== 'ALL') list = list.filter(p => p.segment === activeSegment);
+    if (activeCategory !== 'ALL') list = list.filter(p => p.product_category === activeCategory);
+    const s = new Set(list.map(p => p.sub_category).filter(Boolean));
+    return [...s].sort();
+  }, [products, activeSegment, activeCategory]);
+
+  const filteredProducts = useMemo(() => {
+    let list = products;
+    if (activeSegment !== 'ALL') list = list.filter(p => p.segment === activeSegment);
+    if (activeCategory !== 'ALL') list = list.filter(p => p.product_category === activeCategory);
+    if (activeSubcategory !== 'ALL') list = list.filter(p => p.sub_category === activeSubcategory);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(p =>
+        p.model.toLowerCase().includes(q) ||
+        p.sub_category?.toLowerCase().includes(q) ||
+        p.product_category?.toLowerCase().includes(q) ||
+        p.notes?.toLowerCase().includes(q)
+      );
     }
-    setSavingDraft(false);
+    return list;
+  }, [products, activeSegment, activeCategory, activeSubcategory, searchQuery]);
+
+  const totalItems = bomList.reduce((s, i) => s + i.qty, 0);
+
+  const handleAddToBom = useCallback((product) => {
+    setBomList(prev => {
+      const existing = prev.find(i => i.product_id === product.id && i.vendor === product.vendor);
+      if (existing) return prev.map(i => (i.product_id === product.id && i.vendor === product.vendor) ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { ...product, id: uid(), product_id: product.id, qty: 1, note: '' }];
+    });
+    showToast(`"${product.model}" added to BOM`);
+  }, []);
+
+  const handleQtyChange = (id, qty) => setBomList(prev => prev.map(i => i.id === id ? { ...i, qty } : i));
+  const handleRemove = (id) => setBomList(prev => prev.filter(i => i.id !== id));
+  const handleNoteChange = (id, note) => setBomList(prev => prev.map(i => i.id === id ? { ...i, note } : i));
+
+  const handleSaveDraft = async (name) => {
+    try {
+      const payload = {
+        id: currentDraftId,
+        name,
+        vendor: activeVendor,
+        items: bomList.map(i => ({ product_id: i.product_id || i.id, model: i.model, vendor: i.vendor, qty: i.qty, note: i.note })),
+        status: 'draft',
+        created_by: loggedInUser?.id,
+      };
+      const res = await axios.post(`${API_BASE_URL}/api/bom/drafts`, payload);
+      if (res.data.success) {
+        setCurrentDraftId(res.data.id);
+        setCurrentDraftName(name);
+        setShowSaveDraftModal(false);
+        fetchDrafts();
+        showToast('Draft saved successfully!');
+      }
+    } catch (err) {
+      showToast('Failed to save draft.', 'error');
+    }
   };
 
-  // ── Load draft into BOM ──
   const handleLoadDraft = async (draft) => {
     try {
-      const data = await apiFetch(`/drafts/${draft.id}?userId=${loggedInUser?.id}`);
-      const items = (data.draft.items || []).map(i => ({
-        ...i,
-        _uid: uid(),
-        categoryKey: getCategoryKey(i.product_category),
-      }));
-      setBomList(items);
-      setCurrentDraftName(draft.name);
-      setTab('bom');
-    } catch (e) {
-      showToast('Failed to load draft: ' + e.message, 'error');
+      const res = await axios.get(`${API_BASE_URL}/api/bom/drafts/${draft.id}`);
+      if (res.data.success) {
+        const items = res.data.items.map(i => ({ ...i, id: uid(), qty: i.qty || 1, note: i.note || '' }));
+        setBomList(items);
+        setCurrentDraftId(draft.id);
+        setCurrentDraftName(draft.name);
+        setTab('bom');
+      }
+    } catch (err) {
+      showToast('Failed to load draft.', 'error');
     }
   };
 
   const handleDeleteDraft = async (id) => {
+    if (!window.confirm('Delete this draft?')) return;
     try {
-      await apiFetch(`/drafts/${id}`, {
-        method: 'DELETE',
-        body: JSON.stringify({ userId: loggedInUser?.id, userRole: loggedInUser?.role }),
-      });
-      setDrafts(p => p.filter(d => d.id !== id));
+      await axios.delete(`${API_BASE_URL}/api/bom/drafts/${id}`);
+      fetchDrafts();
       showToast('Draft deleted.');
-    } catch (e) {
-      showToast('Delete failed: ' + e.message, 'error');
+    } catch (err) {
+      showToast('Failed to delete draft.', 'error');
     }
   };
 
-  // ── Forward to Finance ──
-  const handleForwardConfirm = async (draftId, note) => {
-    setSubmitting(true);
+  const handleForwardDraft = async (draft, recipient, note) => {
     try {
-      await apiFetch(`/drafts/${draftId}/forward`, {
-        method: 'POST',
-        body: JSON.stringify({ userId: loggedInUser?.id, finance_note: note }),
-      });
+      await axios.put(`${API_BASE_URL}/api/bom/drafts/${draft.id}/forward`, { recipient, note });
       setForwardTarget(null);
-      await fetchDrafts();
-      showToast('Purchase order forwarded to Finance.');
-    } catch (e) {
-      showToast('Forward failed: ' + e.message, 'error');
-    }
-    setSubmitting(false);
-  };
-
-  // ── Admin: Approve ──
-  const handleApprove = async (po) => {
-    try {
-      await apiFetch(`/purchase-orders/${po.id}/approve`, {
-        method: 'PATCH',
-        body: JSON.stringify({ userId: loggedInUser?.id, userRole: loggedInUser?.role }),
-      });
-      await fetchPurchaseOrders();
-      showToast(`"${po.name}" approved.`);
-    } catch (e) {
-      showToast('Approve failed: ' + e.message, 'error');
+      fetchDrafts();
+      showToast(`"${draft.name}" forwarded to ${recipient}.`);
+    } catch (err) {
+      showToast('Failed to forward draft.', 'error');
     }
   };
 
-  // ── Admin: Reject ──
-  const handleRejectConfirm = async (poId, reason) => {
-    setSubmitting(true);
-    try {
-      await apiFetch(`/purchase-orders/${poId}/reject`, {
-        method: 'PATCH',
-        body: JSON.stringify({ userId: loggedInUser?.id, userRole: loggedInUser?.role, reason }),
-      });
-      setRejectTarget(null);
-      await fetchPurchaseOrders();
-      showToast('Purchase order rejected.');
-    } catch (e) {
-      showToast('Reject failed: ' + e.message, 'error');
-    }
-    setSubmitting(false);
+  const handleImport = async (rows, vendorKey) => {
+    const res = await axios.post(`${API_BASE_URL}/api/bom/products/import`, { products: rows, vendor: vendorKey });
+    if (!res.data.success) throw new Error(res.data.error || 'Import failed');
+    fetchProducts(vendorKey);
+    showToast(`✅ ${rows.length} products imported successfully!`);
   };
 
-  // ── Category / subcategory helpers ──
-  const subcategories = useMemo(() => {
-    if (activeCategory === 'ALL') return [];
-    return categories[activeCategory]?.subcategories || [];
-  }, [activeCategory, categories]);
+  const handleVendorSwitch = (key) => {
+    setActiveVendor(key);
+    setActiveSegment('ALL');
+    setActiveCategory('ALL');
+    setActiveSubcategory('ALL');
+    setSearchQuery('');
+  };
 
-  // ── getCategoryKey (needed on frontend too for loaded items) ──
-  function getCategoryKey(productCategory) {
-    if (!productCategory) return 'OTHER';
-    const c = productCategory.toLowerCase();
-    if (c.includes('router'))     return 'ROUTER';
-    if (c.includes('switch'))     return 'SWITCHES';
-    if (c.includes('wireless') || c.includes('ap')) return 'ACCESS_POINT';
-    if (c.includes('access controller')) return 'ACCESS_POINT';
-    if (c.includes('firewall') || c.includes('security')) return 'FIREWALL';
-    if (c.includes('software'))   return 'SOFTWARE';
-    if (c.includes('accessory'))  return 'ACCESSORY';
-    return 'OTHER';
-  }
-
-  const enrichedProducts = useMemo(() =>
-    products.map(p => ({ ...p, categoryKey: p.categoryKey || getCategoryKey(p.product_category) })),
-    [products]
-  );
-
-  // ── Render ────────────────────────────────────────────────────
   return (
     <div className="bom-root">
-
-      {/* Header */}
       <div className="bom-header">
         <div>
           <h1>BOM Management</h1>
-          <p>Browse the product catalog and build your Bill of Materials.</p>
+          <p>Select a vendor, browse products, and build your Bill of Materials.</p>
         </div>
         <div className="bom-header-actions">
           {currentDraftName && <span className="current-draft-label">📝 {currentDraftName}</span>}
+          <button className="bom-import-btn" onClick={() => setShowImportModal(true)}>
+            📥 Import Products
+          </button>
           {bomList.length > 0 && (
-            <button className="bom-save-draft-btn" onClick={() => setShowSaveDraft(true)}>💾 Save Draft</button>
+            <button className="bom-save-draft-btn" onClick={() => setShowSaveDraftModal(true)}>
+              💾 Save Draft
+            </button>
           )}
         </div>
       </div>
 
-      {/* Toast */}
-      {toast && <div className={`toast-${toast.type}`}>{toast.msg}</div>}
+      {toast && (
+        <div className={`toast-${toast.type || 'success'}`}>{toast.msg}</div>
+      )}
 
-      {/* Tabs */}
       <div className="bom-tabs">
         <button className={`tab-btn${tab === 'catalog' ? ' active' : ''}`} onClick={() => setTab('catalog')}>
           Product Catalog
         </button>
         <button className={`tab-btn${tab === 'bom' ? ' active' : ''}`} onClick={() => setTab('bom')}>
-          BOM List {bomList.length > 0 && <span className="tab-badge">{totalUnits}</span>}
+          BOM List {bomList.length > 0 && <span className="tab-badge">{totalItems}</span>}
         </button>
         <button className={`tab-btn${tab === 'drafts' ? ' active' : ''}`} onClick={() => setTab('drafts')}>
-          My Drafts {drafts.length > 0 && <span className="tab-badge tab-badge-gray">{drafts.length}</span>}
-        </button>
-        <button className={`tab-btn${tab === 'purchase-orders' ? ' active' : ''}`} onClick={() => setTab('purchase-orders')}>
-          Purchase Orders
-          {purchaseOrders.filter(p => p.status === 'forwarded').length > 0 && (
-            <span className="tab-badge tab-badge-orange">
-              {purchaseOrders.filter(p => p.status === 'forwarded').length}
-            </span>
-          )}
+          Drafts {drafts.length > 0 && <span className="tab-badge tab-badge-gray">{drafts.length}</span>}
         </button>
       </div>
 
-      {/* ── CATALOG TAB ── */}
       {tab === 'catalog' && (
         <div>
-          {/* Vendor Selector */}
           <div className="vendor-selector">
-            {VENDORS.map(v => (
-              <button
-                key={v.key}
-                className={`vendor-card${activeVendor === v.key ? ' active' : ''}`}
-                onClick={() => handleVendorSwitch(v.key)}
-                style={{ '--vendor-color': v.color }}
-              >
-                <span className="vendor-logo">{v.logo}</span>
-                <span className="vendor-label">{v.label}</span>
-                {activeVendor === v.key && <span className="vendor-check">✓</span>}
-              </button>
+            {Object.entries(VENDOR_REGISTRY).map(([key, v]) => (
+              <VendorCard key={key} vendorKey={key} vendor={v} active={activeVendor === key} onClick={handleVendorSwitch} />
             ))}
           </div>
 
-          {/* Import CSV — available to all logged-in users */}
-          <div className="bom-import-bar">
-            <label className={`bom-import-btn${importing ? ' loading' : ''}`}>
-              {importing ? '⏳ Importing…' : `📂 Import ${activeVendor === 'ruijie' ? 'Ruijie' : 'Sundray'} CSV`}
-              <input
-                type="file"
-                accept=".csv"
-                style={{ display: 'none' }}
-                onChange={handleImportCSV}
-                disabled={importing}
-              />
-            </label>
-            {importResult && (
-              <span className={`import-result ${importResult.type}`}>
-                {importResult.type === 'success' ? '✅' : '❌'} {importResult.msg}
-              </span>
-            )}
-          </div>
-
-        <div className="bom-search-bar">
-            <input
-              className="bom-search-input"
-              placeholder={`Search ${activeVendor === "ruijie" ? "Ruijie" : "Sundray"} models, categories…`}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {/* Category Pills */}
-          <div className="bom-category-pills">
-            <button className={`category-pill${activeCategory === 'ALL' ? ' active' : ''}`}
-              onClick={() => { setActiveCategory('ALL'); setActiveSub('ALL'); }}>
-              <span className="pill-icon">◎</span> All
-            </button>
-            {Object.entries(CAT_CONFIG).map(([key, cfg]) => (
-              categories[key] ? (
-                <button key={key}
-                  className={`category-pill${activeCategory === key ? ' active' : ''}`}
-                  onClick={() => { setActiveCategory(key); setActiveSub('ALL'); }}>
-                  <span className="pill-icon">{cfg.icon}</span> {cfg.label}
-                </button>
-              ) : null
-            ))}
-          </div>
-
-          {/* Subcategory Pills */}
-          {activeCategory !== 'ALL' && subcategories.length > 0 && (
-            <div className="bom-subcategory-pills">
-              <button className={`subcategory-pill${activeSub === 'ALL' ? ' active' : ''}`}
-                onClick={() => setActiveSub('ALL')}>All</button>
-              {subcategories.map(sub => (
-                <button key={sub}
-                  className={`subcategory-pill${activeSub === sub ? ' active' : ''}`}
-                  onClick={() => setActiveSub(sub)}>
-                  {sub}
-                </button>
-              ))}
+          {!vendor.available ? (
+            <div className="catalog-empty">
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🔜</div>
+              <p style={{ fontWeight: 600, color: '#374151' }}>{vendor.label} catalog coming soon.</p>
+              <p style={{ color: '#9ca3af', fontSize: 13 }}>Products will be available once the catalog is loaded.</p>
             </div>
-          )}
-
-          <p className="bom-product-count">
-            {loadingProducts ? 'Loading…' : `${enrichedProducts.length} product${enrichedProducts.length !== 1 ? 's' : ''} found`}
-            {bomList.length > 0 && (
-              <span className="bom-list-peek" onClick={() => setTab('bom')}>
-                · View BOM list ({totalUnits} units) →
-              </span>
-            )}
-          </p>
-
-          {loadingProducts ? (
-            <div className="catalog-loading">Loading products…</div>
-          ) : enrichedProducts.length > 0 ? (
-            <div className="catalog-grid">
-              {enrichedProducts.map(p => (
-                <ProductCard key={p.id} product={p} onAdd={handleAddToBom} />
-              ))}
-            </div>
+          ) : loadingProducts ? (
+            <div className="catalog-empty"><span>⏳ Loading products…</span></div>
           ) : (
-            <div className="catalog-empty">No products match your filters.</div>
+            <>
+              <div className="bom-search-bar">
+                <input
+                  className="bom-search-input"
+                  placeholder={`Search ${vendor.label} models, categories, or notes…`}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 16 }}>✕</button>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginRight: 8 }}>Segment</span>
+                <div className="bom-category-pills" style={{ display: 'inline-flex' }}>
+                  <button className={`category-pill${activeSegment === 'ALL' ? ' active' : ''}`}
+                    onClick={() => { setActiveSegment('ALL'); setActiveCategory('ALL'); setActiveSubcategory('ALL'); }}>
+                    All
+                  </button>
+                  {segments.map(seg => (
+                    <button key={seg}
+                      className={`category-pill${activeSegment === seg ? ' active' : ''}`}
+                      onClick={() => { setActiveSegment(seg); setActiveCategory('ALL'); setActiveSubcategory('ALL'); }}>
+                      {seg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginRight: 8 }}>Category</span>
+                <div className="bom-category-pills" style={{ display: 'inline-flex' }}>
+                  <button className={`category-pill${activeCategory === 'ALL' ? ' active' : ''}`}
+                    onClick={() => { setActiveCategory('ALL'); setActiveSubcategory('ALL'); }}>
+                    All
+                  </button>
+                  {categories.map(cat => (
+                    <button key={cat}
+                      className={`category-pill${activeCategory === cat ? ' active' : ''}`}
+                      onClick={() => { setActiveCategory(cat); setActiveSubcategory('ALL'); }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {activeCategory !== 'ALL' && subcategories.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginRight: 8 }}>Sub-Category</span>
+                  <div className="bom-subcategory-pills" style={{ display: 'inline-flex', flexWrap: 'wrap' }}>
+                    <button className={`subcategory-pill${activeSubcategory === 'ALL' ? ' active' : ''}`}
+                      onClick={() => setActiveSubcategory('ALL')}>
+                      All
+                    </button>
+                    {subcategories.map(sub => (
+                      <button key={sub}
+                        className={`subcategory-pill${activeSubcategory === sub ? ' active' : ''}`}
+                        onClick={() => setActiveSubcategory(sub)}>
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="bom-product-count">
+                {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} found
+                {bomList.length > 0 && (
+                  <span className="bom-list-peek" onClick={() => setTab('bom')}>
+                    · View BOM list ({totalItems} units) →
+                  </span>
+                )}
+              </p>
+
+              {filteredProducts.length > 0 ? (
+                <div className="catalog-grid">
+                  {filteredProducts.map(p => (
+                    <ProductCard key={p.id} product={p} onAdd={handleAddToBom} />
+                  ))}
+                </div>
+              ) : (
+                <div className="catalog-empty">
+                  <div style={{ fontSize: 36 }}>🔍</div>
+                  <p>No products match your filters.</p>
+                  {products.length === 0 && (
+                    <button className="browse-btn" onClick={() => setShowImportModal(true)}>📥 Import Products Now</button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
 
-      {/* ── BOM LIST TAB ── */}
       {tab === 'bom' && (
         <div>
           {bomList.length === 0 ? (
@@ -837,9 +747,10 @@ const Bom = ({ loggedInUser }) => {
             <>
               <div className="bom-summary-bar">
                 {[
-                  { label: 'Line Items',  value: bomList.length },
-                  { label: 'Total Units', value: totalUnits },
-                  { label: 'Categories', value: new Set(bomList.map(i => i.categoryKey)).size },
+                  { label: 'Line Items', value: bomList.length },
+                  { label: 'Total Units', value: totalItems },
+                  { label: 'Vendors', value: new Set(bomList.map(i => i.vendor)).size },
+                  { label: 'Categories', value: new Set(bomList.map(i => i.product_category)).size },
                 ].map(s => (
                   <div key={s.label} className="bom-summary-card">
                     <div className="bom-summary-value">{s.value}</div>
@@ -851,140 +762,59 @@ const Bom = ({ loggedInUser }) => {
               <div className="bom-table-wrapper">
                 <table className="bom-table">
                   <thead>
-                    <tr>{['Model / Vendor','Category','Subcategory','Quantity','Notes',''].map(h => <th key={h}>{h}</th>)}</tr>
+                    <tr>
+                      {['Model / Vendor', 'Category', 'Sub-Category / Segment', 'Quantity', 'Notes', ''].map(h => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
                   </thead>
                   <tbody>
                     {bomList.map(item => (
-                      <BomLineItem key={item._uid} item={item}
-                        onQtyChange={handleQtyChange}
-                        onRemove={handleRemove}
-                        onNoteChange={handleNoteChange}
-                      />
+                      <BomLineItem key={item.id} item={item} onQtyChange={handleQtyChange} onRemove={handleRemove} onNoteChange={handleNoteChange} />
                     ))}
                   </tbody>
                 </table>
               </div>
 
               <div className="bom-footer-actions">
-                <button className="bom-clear-btn" onClick={() => { setBomList([]); setCurrentDraftName(''); }}>Clear All</button>
-                <button className="bom-save-draft-btn" onClick={() => setShowSaveDraft(true)}>💾 Save Draft</button>
+                <button className="bom-clear-btn" onClick={() => { if (window.confirm('Clear the entire BOM list?')) { setBomList([]); setCurrentDraftName(''); setCurrentDraftId(null); } }}>Clear All</button>
+                <button className="bom-save-draft-btn" onClick={() => setShowSaveDraftModal(true)}>💾 Save Draft</button>
               </div>
             </>
           )}
         </div>
       )}
 
-      {/* ── DRAFTS TAB ── */}
       {tab === 'drafts' && (
         <div>
           {loadingDrafts ? (
-            <div className="catalog-loading">Loading drafts…</div>
+            <div className="bom-empty-state"><p>⏳ Loading drafts…</p></div>
           ) : drafts.length === 0 ? (
             <div className="bom-empty-state">
               <div className="empty-icon">🗂️</div>
               <p>No drafts saved yet.</p>
-              <p className="empty-sub">Build a BOM and save it as a draft.</p>
+              <p className="empty-sub">Build a BOM list and save it as a draft to forward to finance.</p>
               <button className="browse-btn" onClick={() => setTab('catalog')}>Start Building</button>
             </div>
           ) : (
             <div className="drafts-list">
-              <p className="drafts-hint">Save drafts and forward them to the Finance team for pricing and approval.</p>
+              <p className="drafts-hint">Saved drafts can be loaded back into the BOM list or forwarded directly to the finance team for pricing.</p>
               {drafts.map(draft => (
-                <div key={draft.id} className="draft-card">
-                  <div className="draft-card-top">
-                    <div>
-                      <div className="draft-card-name">{draft.name}</div>
-                      <div className="draft-card-meta">
-                        {draft.item_count} items · {draft.total_units} units · {formatDate(draft.updated_at)}
-                      </div>
-                    </div>
-                    <StatusBadge status={draft.status} />
-                  </div>
-                  <div className="draft-card-actions">
-                    <button className="draft-btn-load" onClick={() => handleLoadDraft(draft)}>Load</button>
-                    {draft.status === 'draft' && (
-                      <button className="draft-btn-forward" onClick={() => setForwardTarget(draft)}>→ Forward to Finance</button>
-                    )}
-                    <button className="draft-btn-delete" onClick={() => handleDeleteDraft(draft.id)}>Delete</button>
-                  </div>
-                </div>
+                <DraftCard key={draft.id} draft={draft} onLoad={handleLoadDraft} onDelete={handleDeleteDraft} onForward={(d) => setForwardTarget(d)} />
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* ── PURCHASE ORDERS TAB (all logged-in users) ── */}
-      {tab === 'purchase-orders' && (
-        <div>
-          <div className="po-tab-header">
-            <div>
-              <h2 className="po-tab-title">Purchase Orders</h2>
-              <p className="po-tab-sub">All BOM drafts forwarded by staff for pricing and approval.</p>
-            </div>
-            <button className="po-refresh-btn" onClick={fetchPurchaseOrders}>↺ Refresh</button>
-          </div>
-
-          {/* Status filter chips */}
-          <div className="po-status-filters">
-            {['all','forwarded','approved','rejected'].map(s => (
-              <button key={s} className="po-filter-chip"
-                onClick={() => fetchPurchaseOrders(s === 'all' ? undefined : s)}>
-                {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label}
-              </button>
-            ))}
-          </div>
-
-          {loadingPOs ? (
-            <div className="catalog-loading">Loading purchase orders…</div>
-          ) : purchaseOrders.length === 0 ? (
-            <div className="bom-empty-state">
-              <div className="empty-icon">📄</div>
-              <p>No purchase orders yet.</p>
-              <p className="empty-sub">Staff will forward BOM drafts here for review.</p>
-            </div>
-          ) : (
-            <div className="po-list">
-              {purchaseOrders.map(po => (
-                <POCard
-                  key={po.id}
-                  po={po}
-                  isAdmin={isAdmin}
-                  userRole={loggedInUser?.role}
-                  onApprove={handleApprove}
-                  onReject={(po) => setRejectTarget(po)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Modals ── */}
-      {showSaveDraft && (
-        <SaveDraftModal
-          existingName={currentDraftName}
-          onSave={handleSaveDraft}
-          onClose={() => setShowSaveDraft(false)}
-          saving={savingDraft}
-        />
+      {showSaveDraftModal && (
+        <SaveDraftModal existingName={currentDraftName} onSave={handleSaveDraft} onClose={() => setShowSaveDraftModal(false)} />
       )}
       {forwardTarget && (
-        <ForwardModal
-          draft={forwardTarget}
-          onConfirm={handleForwardConfirm}
-          onClose={() => setForwardTarget(null)}
-          submitting={submitting}
-          loggedInUser={loggedInUser}
-        />
+        <ForwardModal draft={forwardTarget} onConfirm={handleForwardDraft} onClose={() => setForwardTarget(null)} />
       )}
-      {rejectTarget && (
-        <RejectModal
-          po={rejectTarget}
-          onConfirm={handleRejectConfirm}
-          onClose={() => setRejectTarget(null)}
-          submitting={submitting}
-        />
+      {showImportModal && (
+        <ImportModal onImport={handleImport} onClose={() => setShowImportModal(false)} />
       )}
     </div>
   );
