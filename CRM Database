@@ -163,3 +163,63 @@ COLLATE='utf8mb4_uca1400_ai_ci'
 ENGINE=InnoDB
 AUTO_INCREMENT=55
 ;
+
+CREATE TABLE IF NOT EXISTS bom_products (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  model             VARCHAR(255)  NOT NULL,
+  vendor            VARCHAR(50)   NOT NULL DEFAULT 'ruijie',   -- ruijie | cisco | aruba | ubiquiti
+  segment           VARCHAR(100)  DEFAULT '',                  -- Enterprise | SME | Data Center
+  product_category  VARCHAR(100)  DEFAULT '',                  -- Router | Switch | Wireless / AP | Firewall…
+  sub_category      VARCHAR(150)  DEFAULT '',                  -- Indoor AP | DC Core Switch…
+  wireless_standard VARCHAR(50)   DEFAULT '',                  -- Wi-Fi 6 | Wi-Fi 7 | -
+  deployment        VARCHAR(100)  DEFAULT '',                  -- Indoor | Outdoor | Wall-Plate | Rack…
+  management_type   VARCHAR(100)  DEFAULT '',                  -- On-Premise | Cloud-Managed | WaaS
+  poe               VARCHAR(30)   DEFAULT '',                  -- PoE | PoE+ | PoE++ | Non-PoE | N/A
+  tag_dc            TINYINT(1)    DEFAULT 0,                   -- 1 = Data Center tag
+  tag_enterprise    TINYINT(1)    DEFAULT 0,                   -- 1 = Enterprise tag
+  tag_sme           TINYINT(1)    DEFAULT 0,                   -- 1 = SME tag
+  notes             TEXT          DEFAULT '',                  -- Free-text notes / URL
+  created_at        DATETIME      DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_model_vendor (model, vendor),
+  INDEX idx_vendor          (vendor),
+  INDEX idx_segment         (segment),
+  INDEX idx_product_category (product_category),
+  INDEX idx_sub_category    (sub_category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+CREATE TABLE IF NOT EXISTS bom_drafts (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  name            VARCHAR(255)  NOT NULL,
+  vendor          VARCHAR(50)   DEFAULT 'ruijie',
+  status          ENUM('draft', 'forwarded', 'approved', 'rejected') DEFAULT 'draft',
+  created_by      INT           DEFAULT NULL,              -- FK to users.id (optional)
+  forwarded_to    VARCHAR(255)  DEFAULT NULL,              -- email or name of finance contact
+  forward_note    TEXT          DEFAULT NULL,
+  forwarded_at    DATETIME      DEFAULT NULL,
+  saved_at        DATETIME      DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_status     (status),
+  INDEX idx_created_by (created_by),
+  CONSTRAINT fk_bom_drafts_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+CREATE TABLE IF NOT EXISTS bom_draft_items (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  draft_id    INT           NOT NULL,
+  product_id  INT           DEFAULT NULL,  -- references bom_products.id (soft)
+  model       VARCHAR(255)  NOT NULL,      -- denormalized snapshot at save time
+  vendor      VARCHAR(50)   DEFAULT 'ruijie',
+  qty         INT           NOT NULL DEFAULT 1,
+  note        TEXT          DEFAULT '',
+  created_at  DATETIME      DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_draft_id   (draft_id),
+  INDEX idx_product_id (product_id),
+  CONSTRAINT fk_bom_items_draft FOREIGN KEY (draft_id) REFERENCES bom_drafts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
