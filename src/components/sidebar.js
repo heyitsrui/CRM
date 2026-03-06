@@ -9,11 +9,12 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  DollarSign
+  DollarSign,
+  LayoutGrid
 } from 'lucide-react';
 import '../styles/dashboard.css';
 
-const Sidebar = ({ activeIndex, setActiveIndex, onLogout, className }) => {
+const Sidebar = ({ activeIndex, setActiveIndex, onLogout }) => {
   const [openMenus, setOpenMenus] = useState({});
 
   const menuItems = [ 
@@ -31,6 +32,10 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout, className }) => {
     { 
       label: 'Finance', 
       icon: <DollarSign size={20} />, 
+    },
+    { 
+      label: 'BOM', 
+      icon: <LayoutGrid size={20} />, 
     },
     { 
       label: 'Tasks', 
@@ -56,7 +61,7 @@ const Sidebar = ({ activeIndex, setActiveIndex, onLogout, className }) => {
   };
 
   return (
-    <aside className={`sidebar ${className}`}>
+    <aside className="sidebar">
       <div className="logo-section">
         <img src="vtic.webp" alt="Visible Logo" />
       </div>
