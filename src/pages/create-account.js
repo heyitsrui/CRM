@@ -125,11 +125,9 @@ function CreateAccount() {
                 disabled={isLoading}
               >
                 <option value="" disabled>Select your position here</option>
-                <option value="admin">System Administrator</option>
                 <option value="manager">Sales Manager</option>
                 <option value="executive">Sales Executive</option>
                 <option value="finance">Finance</option>
-                <option value="viewer">Viewer</option>
               </select>
             </div>
 
