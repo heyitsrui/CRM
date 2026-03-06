@@ -9,35 +9,35 @@ const API_BASE_URL = `http://${window.location.hostname}:5000`;
 const VENDOR_REGISTRY = {
   ruijie: {
     label: 'Ruijie Networks',
-    logoUrl: 'https://www.ruijienetworks.com/favicon.ico', // replace with your hosted logo path
+    logoUrl: 'https://www.almacctv.com/web/wp-content/uploads/2020/11/ruijie-logo.png',
     logoFallback: 'RJ',
     color: '#2563eb',
     bgColor: '#eff6ff',
     available: true,
   },
-  cisco: {
-    label: 'Cisco',
-    logoUrl: 'https://www.cisco.com/favicon.ico',
-    logoFallback: 'CS',
-    color: '#00539F',
-    bgColor: '#eff8ff',
-    available: false,
-  },
-  aruba: {
-    label: 'Aruba Networks',
-    logoUrl: 'https://www.arubanetworks.com/favicon.ico',
-    logoFallback: 'AR',
-    color: '#FF8300',
-    bgColor: '#fff7ed',
-    available: false,
-  },
-  ubiquiti: {
-    label: 'Ubiquiti',
-    logoUrl: 'https://www.ui.com/favicon.ico',
-    logoFallback: 'UI',
-    color: '#0559C9',
+  sundray: {
+    label: 'Sundray',
+    logoUrl: 'https://www.cstc.com.ph/images/sundray.png',
+    logoFallback: 'SD',
+    color: '#2563eb',
     bgColor: '#eff6ff',
-    available: false,
+    available: true,
+  },
+  hikvision: {
+    label: 'Hikvision',
+    logoUrl: 'https://www.hikvision.com/favicon.ico',
+    logoFallback: 'HV',
+    color: '#2563eb',
+    bgColor: '#eff6ff',
+    available: true,
+  },
+  zkteco: {
+    label: 'Zkteco',
+    logoUrl: 'https://zkteco.technology/calculator/images/pngwing.com.png',
+    logoFallback: 'ZT',
+    color: '#2563eb',
+    bgColor: '#eff6ff',
+    available: true,
   },
 };
 
@@ -194,23 +194,110 @@ function BomLineItem({ item, onQtyChange, onRemove, onNoteChange }) {
   );
 }
 
-function DraftCard({ draft, onLoad, onDelete, onForward }) {
+function DraftItemsTable({ items, loading }) {
+  if (loading) return <div style={{ padding: '12px 0', color: '#6b7280', fontSize: 13 }}>⏳ Loading items…</div>;
+  if (!items || items.length === 0) return <div style={{ padding: '12px 0', color: '#9ca3af', fontSize: 13 }}>No items found.</div>;
+  return (
+    <div style={{ overflowX: 'auto', marginTop: 10, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
+      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: '#f9fafb' }}>
+            {['Model', 'Category', 'Sub-Category', 'Qty', 'Note'].map(h => (
+              <th key={h} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600 }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <td style={{ padding: '6px 10px', fontWeight: 600, color: '#111827' }}>{item.model}</td>
+              <td style={{ padding: '6px 10px', color: '#374151' }}>{item.product_category || '—'}</td>
+              <td style={{ padding: '6px 10px', color: '#374151' }}>{item.sub_category || '—'}</td>
+              <td style={{ padding: '6px 10px', color: '#374151' }}>{item.qty}</td>
+              <td style={{ padding: '6px 10px', color: '#9ca3af' }}>{item.note || item.notes || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DraftCard({ draft, onDelete, onMoveToPricing, onFetchItems }) {
+  const [expanded, setExpanded] = useState(false);
+  const [items, setItems] = useState(null);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  const handleToggle = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && items === null) {
+      setLoadingItems(true);
+      try { setItems(await onFetchItems(draft.id)); }
+      catch { setItems([]); }
+      finally { setLoadingItems(false); }
+    }
+  };
+
   return (
     <div className="draft-card">
       <div className="draft-card-top">
         <div>
           <div className="draft-card-name">{draft.name}</div>
           <div className="draft-card-meta">
-            {draft.item_count ?? draft.items?.length ?? 0} items · {formatDate(draft.saved_at || draft.savedAt)}
+            {draft.item_count ?? 0} items · {formatDate(draft.saved_at || draft.savedAt)}
           </div>
         </div>
         <span className={`draft-status-badge ${draft.status}`}>{draft.status}</span>
       </div>
       <div className="draft-card-actions">
-        <button className="draft-btn-load" onClick={() => onLoad(draft)}>Load</button>
-        <button className="draft-btn-forward" onClick={() => onForward(draft)}>→ Forward to Finance</button>
+        <button className="draft-btn-load" onClick={handleToggle}>
+          {expanded ? '▲ Hide Items' : '▼ View Items'}
+        </button>
+        <button className="draft-btn-forward" onClick={() => onMoveToPricing(draft)}>💰 Move for Pricing</button>
         <button className="draft-btn-delete" onClick={() => onDelete(draft.id)}>Delete</button>
       </div>
+      {expanded && <DraftItemsTable items={items} loading={loadingItems} />}
+    </div>
+  );
+}
+
+function PricingCard({ draft, onDelete, onMoveBackToDraft, onFetchItems }) {
+  const [expanded, setExpanded] = useState(false);
+  const [items, setItems] = useState(null);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  const handleToggle = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && items === null) {
+      setLoadingItems(true);
+      try { setItems(await onFetchItems(draft.id)); }
+      catch { setItems([]); }
+      finally { setLoadingItems(false); }
+    }
+  };
+
+  return (
+    <div className="draft-card pricing-card">
+      <div className="draft-card-top">
+        <div>
+          <div className="draft-card-name">{draft.name}</div>
+          <div className="draft-card-meta">
+            {draft.item_count ?? 0} items
+            {draft.forwarded_at && <> · Moved {formatDate(draft.forwarded_at)}</>}
+          </div>
+        </div>
+        <span className="draft-status-badge pricing">pricing</span>
+      </div>
+      <div className="draft-card-actions">
+        <button className="draft-btn-load" onClick={handleToggle}>
+          {expanded ? '▲ Hide Items' : '▼ View Items'}
+        </button>
+        <button className="draft-btn-back" onClick={() => onMoveBackToDraft(draft)}>↩ Move Back to Drafts</button>
+        <button className="draft-btn-delete" onClick={() => onDelete(draft.id)}>Delete</button>
+      </div>
+      {expanded && <DraftItemsTable items={items} loading={loadingItems} />}
     </div>
   );
 }
@@ -237,31 +324,7 @@ function SaveDraftModal({ onSave, onClose, existingName }) {
   );
 }
 
-function ForwardModal({ draft, onConfirm, onClose }) {
-  const [recipient, setRecipient] = useState('');
-  const [note, setNote] = useState('');
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box modal-sm" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">Forward to Finance</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <p className="modal-desc">Forwarding <strong>{draft.name}</strong> ({draft.item_count ?? draft.items?.length} items) for pricing.</p>
-          <label className="modal-label">Finance Contact / Email</label>
-          <input className="modal-input" placeholder="e.g. finance@company.com" value={recipient} onChange={e => setRecipient(e.target.value)} />
-          <label className="modal-label" style={{ marginTop: 12 }}>Note (optional)</label>
-          <textarea className="modal-textarea" placeholder="Any instructions for the finance team…" value={note} onChange={e => setNote(e.target.value)} rows={3} />
-          <div className="modal-footer-actions">
-            <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-            <button className="modal-save-btn" onClick={() => onConfirm(draft, recipient, note)} disabled={!recipient.trim()}>Send</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 function ImportModal({ onImport, onClose }) {
@@ -271,21 +334,150 @@ function ImportModal({ onImport, onClose }) {
   const [importing, setImporting] = useState(false);
   const [vendor, setVendor] = useState('ruijie');
 
+  // Split a single CSV line into columns, respecting quoted fields
+  const splitCSVLine = (line) => {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; }
+      else if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += line[i]; }
+    }
+    cols.push(cur.trim());
+    return cols;
+  };
+
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(l => l.trim());
-    // Skip header rows (first 2 lines based on CSV format)
-    const dataLines = lines.slice(2);
     const parsed = [];
-    for (const line of dataLines) {
-      // Handle quoted fields
-      const cols = [];
-      let cur = '', inQ = false;
-      for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"') { inQ = !inQ; }
-        else if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
-        else { cur += line[i]; }
+
+    // ── Hikvision format ──────────────────────────────────────────────────────
+    // Row 0: title row  ("HIKVISION – BILL OF MATERIALS…")
+    // Row 1: column headers (#, Model Number, Category, Sub-Category, …)
+    // Data rows may contain section-header lines (e.g. "▌  CAMERAS") – skip those
+    // Columns: 0=#, 1=Model Number, 2=Category, 3=Sub-Category,
+    //          4=Resolution, 5=Technology/Series, 6=Key Features, 7=Product Line Tag
+    if (vendor === 'hikvision') {
+      const dataLines = lines.slice(2); // skip title + header
+      for (const line of dataLines) {
+        const cols = splitCSVLine(line);
+        // Skip section-header rows (no numeric # in col 0, or col 1 is empty)
+        if (!cols[1] || isNaN(Number(cols[0]))) continue;
+        const productLine = cols[7] || '';
+        // Derive a segment from the product line tag
+        const segmentMap = {
+          'AcuSense': 'Enterprise',
+          'DeepinView': 'Enterprise',
+          'ColorVu': 'SME / Enterprise',
+          'Network Camera': 'SME',
+          'DarkFighter / DarkFighterX': 'Enterprise',
+          'TandemVu': 'Enterprise',
+          'PTZ': 'Enterprise',
+          'Access Control': 'SME / Enterprise',
+          'Intercom': 'SME',
+          'NVR': 'SME / Enterprise',
+          'DVR / XVR': 'SME',
+          'Storage': 'Enterprise',
+          'Video Management Software': 'Enterprise',
+          'Alarm System': 'SME',
+          'LPR / ANPR': 'Enterprise',
+          'Thermal': 'Enterprise',
+        };
+        const segment = segmentMap[productLine] || (cols[2] ? 'SME / Enterprise' : '');
+        parsed.push({
+          model: cols[1],
+          segment,
+          product_category: cols[2] || '',
+          sub_category: cols[3] || '',
+          wireless_standard: cols[4] || '',   // reused for Resolution
+          deployment: cols[5] || '',           // reused for Technology/Series
+          management_type: productLine,
+          poe: '',
+          tag_dc: 0,
+          tag_enterprise: segment.includes('Enterprise') ? 1 : 0,
+          tag_sme: segment.includes('SME') ? 1 : 0,
+          notes: cols[6] || '',               // Key Features
+          vendor,
+        });
       }
-      cols.push(cur.trim());
+      return parsed;
+    }
+
+    // ── ZKTeco format ─────────────────────────────────────────────────────────
+    // Row 0: title row  ("ZKTeco BOM – Master Product Catalog…")
+    // Row 1: column headers (#, Product/Model, Category, Sub-Category,
+    //         Product Line, ZKTeco Segment, Tags, CPU/Hardware, Display,
+    //         Capacity, Auth Methods, Communication, IP Rating, Operating Temp,
+    //         Dimensions, Key Specs/Notes, Camera Type, Resolution, Technology)
+    if (vendor === 'zkteco') {
+      const dataLines = lines.slice(2); // skip title + header
+      for (const line of dataLines) {
+        const cols = splitCSVLine(line);
+        // Skip section-header / empty rows
+        if (!cols[1] || isNaN(Number(cols[0]))) continue;
+        const segment = cols[5] || '';
+        const tags     = cols[6] || '';
+        parsed.push({
+          model: cols[1],
+          segment,
+          product_category: cols[2] || '',
+          sub_category: cols[3] || '',
+          wireless_standard: cols[11] || '',  // Communication field
+          deployment: cols[4] || '',           // Product Line
+          management_type: tags,
+          poe: '',
+          tag_dc: segment.toLowerCase().includes('data center') ? 1 : 0,
+          tag_enterprise: segment.toLowerCase().includes('enterprise') ? 1 : 0,
+          tag_sme: segment.toLowerCase().includes('sme') || segment.toLowerCase().includes('smart') ? 1 : 0,
+          notes: cols[15] || '',              // Key Specs/Notes
+          vendor,
+        });
+      }
+      return parsed;
+    }
+
+    // ── Sundray format ────────────────────────────────────────────────────────
+    // Row 0: column headers (no title row!)
+    // Columns: 0=Model/SKU, 1=Product Category, 2=Sub-Category,
+    //          3=Product Line, 4=Wi-Fi Standard, 5=Port Config,
+    //          6=PoE Support, 7=Uplink, 8=Filter Tags, 9=Description
+    if (vendor === 'sundray') {
+      const dataLines = lines.slice(1); // skip only the header row
+      for (const line of dataLines) {
+        const cols = splitCSVLine(line);
+        if (!cols[0]) continue;
+        const filterTags = cols[8] || '';
+        const segment = filterTags.toLowerCase().includes('data center') ? 'Data Center'
+          : filterTags.toLowerCase().includes('enterprise') ? 'Enterprise'
+          : 'SME / Enterprise';
+        parsed.push({
+          model: cols[0],
+          segment,
+          product_category: cols[1] || '',
+          sub_category: cols[2] || '',
+          wireless_standard: cols[4] || '',
+          deployment: cols[3] || '',
+          management_type: '',
+          poe: cols[6] || '',
+          tag_dc: segment === 'Data Center' ? 1 : 0,
+          tag_enterprise: segment.includes('Enterprise') ? 1 : 0,
+          tag_sme: segment.includes('SME') ? 1 : 0,
+          notes: cols[9] || '',
+          vendor,
+        });
+      }
+      return parsed;
+    }
+
+    // ── Ruijie format (default) ───────────────────────────────────────────────
+    // Row 0: title row  ("RUIJIE NETWORKS – FULL PRODUCT BOM…")
+    // Row 1: column headers
+    // Columns: 0=Model, 1=Segment, 2=Category, 3=Sub-Category,
+    //          4=Wireless Standard, 5=Deployment, 6=Management Type,
+    //          7=PoE, 8=DC Tag, 9=Enterprise Tag, 10=SME Tag, 13=Notes
+    const dataLines = lines.slice(2);
+    for (const line of dataLines) {
+      const cols = splitCSVLine(line);
       if (cols.length >= 3 && cols[0]) {
         parsed.push({
           model: cols[0],
@@ -300,7 +492,7 @@ function ImportModal({ onImport, onClose }) {
           tag_enterprise: cols[9]?.includes('✓') ? 1 : 0,
           tag_sme: cols[10]?.includes('✓') ? 1 : 0,
           notes: cols[13] || cols[11] || '',
-          vendor: vendor,
+          vendor,
         });
       }
     }
@@ -426,8 +618,7 @@ const Bom = ({ loggedInUser }) => {
   const [showSaveDraftModal, setShowSaveDraftModal] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [currentDraftName, setCurrentDraftName] = useState('');
-  const [forwardTarget, setForwardTarget] = useState(null);
-  const [forwardSuccess, setForwardSuccess] = useState(null);
+
   const [showImportModal, setShowImportModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -465,6 +656,9 @@ const Bom = ({ loggedInUser }) => {
   }, []);
 
   useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
+
+  const draftItems   = drafts.filter(d => d.status === 'draft');
+  const pricingItems = drafts.filter(d => d.status === 'pricing');
 
   const vendor = VENDOR_REGISTRY[activeVendor];
 
@@ -546,19 +740,11 @@ const Bom = ({ loggedInUser }) => {
     }
   };
 
-  const handleLoadDraft = async (draft) => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/bom/drafts/${draft.id}`);
-      if (res.data.success) {
-        const items = res.data.items.map(i => ({ ...i, id: uid(), qty: i.qty || 1, note: i.note || '' }));
-        setBomList(items);
-        setCurrentDraftId(draft.id);
-        setCurrentDraftName(draft.name);
-        setTab('bom');
-      }
-    } catch (err) {
-      showToast('Failed to load draft.', 'error');
-    }
+  // Fetch items inline for card expand
+  const handleFetchDraftItems = async (draftId) => {
+    const res = await axios.get(`${API_BASE_URL}/api/bom/drafts/${draftId}`);
+    if (!res.data.success) throw new Error('Failed to fetch items');
+    return res.data.items || [];
   };
 
   const handleDeleteDraft = async (id) => {
@@ -572,14 +758,24 @@ const Bom = ({ loggedInUser }) => {
     }
   };
 
-  const handleForwardDraft = async (draft, recipient, note) => {
+  const handleMoveToPricing = async (draft) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/bom/drafts/${draft.id}/forward`, { recipient, note });
-      setForwardTarget(null);
-      fetchDrafts();
-      showToast(`"${draft.name}" forwarded to ${recipient}.`);
+      await axios.put(`${API_BASE_URL}/api/bom/drafts/${draft.id}/forward`);
+      await fetchDrafts();
+      setTab('pricing');
+      showToast(`"${draft.name}" moved to Pricing.`);
     } catch (err) {
-      showToast('Failed to forward draft.', 'error');
+      showToast('Failed to move to pricing.', 'error');
+    }
+  };
+
+  const handleMoveBackToDraft = async (draft) => {
+    try {
+      await axios.put(`${API_BASE_URL}/api/bom/drafts/${draft.id}/status`, { status: 'draft' });
+      fetchDrafts();
+      showToast(`"${draft.name}" moved back to Drafts.`);
+    } catch (err) {
+      showToast('Failed to move back to drafts.', 'error');
     }
   };
 
@@ -612,7 +808,7 @@ const Bom = ({ loggedInUser }) => {
         </div>
         <div className="bom-header-actions">
           {currentDraftName && <span className="current-draft-label">📝 {currentDraftName}</span>}
-          {isAdmin && (
+          {(
             <button className="bom-import-btn" onClick={() => setShowImportModal(true)}>
               📥 Import Products
             </button>
@@ -639,7 +835,10 @@ const Bom = ({ loggedInUser }) => {
           BOM List {bomList.length > 0 && <span className="tab-badge">{totalItems}</span>}
         </button>
         <button className={`tab-btn${tab === 'drafts' ? ' active' : ''}`} onClick={() => setTab('drafts')}>
-          Drafts {drafts.length > 0 && <span className="tab-badge tab-badge-gray">{drafts.length}</span>}
+          Drafts {draftItems.length > 0 && <span className="tab-badge tab-badge-gray">{draftItems.length}</span>}
+        </button>
+        <button className={`tab-btn${tab === 'pricing' ? ' active' : ''}`} onClick={() => setTab('pricing')}>
+          Pricing {pricingItems.length > 0 && <span className="tab-badge tab-badge-amber">{pricingItems.length}</span>}
         </button>
       </div>
 
@@ -818,18 +1017,41 @@ const Bom = ({ loggedInUser }) => {
         <div>
           {loadingDrafts ? (
             <div className="bom-empty-state"><p>⏳ Loading drafts…</p></div>
-          ) : drafts.length === 0 ? (
+          ) : draftItems.length === 0 ? (
             <div className="bom-empty-state">
               <div className="empty-icon">🗂️</div>
               <p>No drafts saved yet.</p>
-              <p className="empty-sub">Build a BOM list and save it as a draft to forward to finance.</p>
+              <p className="empty-sub">Build a BOM list and save it as a draft to move for pricing.</p>
               <button className="browse-btn" onClick={() => setTab('catalog')}>Start Building</button>
             </div>
           ) : (
             <div className="drafts-list">
-              <p className="drafts-hint">Saved drafts can be loaded back into the BOM list or forwarded directly to the finance team for pricing.</p>
-              {drafts.map(draft => (
-                <DraftCard key={draft.id} draft={draft} onLoad={handleLoadDraft} onDelete={handleDeleteDraft} onForward={(d) => setForwardTarget(d)} />
+              <p className="drafts-hint">Click "View Items" to see the products inside a draft. Click "Move for Pricing" to send it to the Pricing tab.</p>
+              {draftItems.map(draft => (
+                <DraftCard key={draft.id} draft={draft} onDelete={handleDeleteDraft} onMoveToPricing={handleMoveToPricing} onFetchItems={handleFetchDraftItems} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PRICING TAB ── */}
+      {tab === 'pricing' && (
+        <div>
+          {loadingDrafts ? (
+            <div className="bom-empty-state"><p>⏳ Loading…</p></div>
+          ) : pricingItems.length === 0 ? (
+            <div className="bom-empty-state">
+              <div className="empty-icon">💰</div>
+              <p>No BOMs moved for pricing yet.</p>
+              <p className="empty-sub">Go to Drafts and click "Move for Pricing" on a saved BOM.</p>
+              <button className="browse-btn" onClick={() => setTab('drafts')}>Go to Drafts</button>
+            </div>
+          ) : (
+            <div className="drafts-list">
+              <p className="drafts-hint">Click "View Items" to see all products. Move back to Drafts if changes are needed.</p>
+              {pricingItems.map(draft => (
+                <PricingCard key={draft.id} draft={draft} onDelete={handleDeleteDraft} onMoveBackToDraft={handleMoveBackToDraft} onFetchItems={handleFetchDraftItems} />
               ))}
             </div>
           )}
@@ -839,9 +1061,6 @@ const Bom = ({ loggedInUser }) => {
       {/* ── Modals ── */}
       {showSaveDraftModal && (
         <SaveDraftModal existingName={currentDraftName} onSave={handleSaveDraft} onClose={() => setShowSaveDraftModal(false)} />
-      )}
-      {forwardTarget && (
-        <ForwardModal draft={forwardTarget} onConfirm={handleForwardDraft} onClose={() => setForwardTarget(null)} />
       )}
       {showImportModal && (
         <ImportModal onImport={handleImport} onClose={() => setShowImportModal(false)} />
