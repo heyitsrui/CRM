@@ -318,7 +318,8 @@ export default function Dashboard() {
         return <Client userRole={loggedInUser?.role} />;
       case 'company':
         return <Company userRole={loggedInUser?.role} />;
-      case 4:
+      case 4: 
+        return <BOM loggedInUser={loggedInUser?.role} />;
       case 'my task':
         return <Tasks loggedInUser={loggedInUser} />;
       case 'time tree':
@@ -386,3 +387,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
