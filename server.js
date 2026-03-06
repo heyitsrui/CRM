@@ -1237,586 +1237,199 @@ app.get('/api/bom/products/categories', async (req, res) => {
   }
 });
 
-// ================================================================
-// BOM DRAFTS
-// ================================================================
+// =============================================================================
+// BOM API ROUTES — paste these into your server.js before the app.listen() line
+// =============================================================================
 
-// GET /api/bom/drafts?userId=123
-// Returns all drafts belonging to this user
-app.get('/api/bom/drafts', async (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ success: false, error: 'userId is required' });
-
+// ─── GET all products (filterable by vendor) ─────────────────────────────────
+app.get('/api/bom/products', async (req, res) => {
   try {
-    const drafts = await queryDB(
-      `SELECT d.*,
-              u.name    AS creator_name,
-              u.email   AS creator_email,
-              u.role    AS creator_role,
-              u.avatar  AS creator_avatar
-       FROM bom_drafts d
-       JOIN users u ON u.id = d.created_by
-       WHERE d.created_by = ?
-       ORDER BY d.updated_at DESC`,
-      [userId]
-    );
-
-    // Attach item count + total units to each draft
-    for (const draft of drafts) {
-      const cnt = await queryDB(
-        'SELECT COUNT(*) AS item_count, IFNULL(SUM(quantity),0) AS total_units FROM bom_draft_items WHERE draft_id = ?',
-        [draft.id]
-      );
-      draft.item_count  = Number(cnt[0].item_count);
-      draft.total_units = Number(cnt[0].total_units);
+    const { vendor } = req.query;
+    let sql = 'SELECT * FROM bom_products';
+    const params = [];
+    if (vendor) {
+      sql += ' WHERE vendor = ?';
+      params.push(vendor);
     }
-
-    res.json({ success: true, drafts });
+    sql += ' ORDER BY segment, product_category, sub_category, model';
+    const rows = await queryDB(sql, params);
+    res.json({ success: true, products: rows });
   } catch (err) {
-    console.error('GET /api/bom/drafts error:', err);
+    console.error('BOM Products GET error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET /api/bom/drafts/:id?userId=123
-// Returns one full draft with all its line items
-app.get('/api/bom/drafts/:id', async (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ success: false, error: 'userId is required' });
-
-  try {
-    const rows = await queryDB(
-      `SELECT d.*,
-              u.name   AS creator_name,
-              u.email  AS creator_email,
-              u.role   AS creator_role,
-              u.avatar AS creator_avatar,
-              rv.name  AS reviewer_name,
-              rv.email AS reviewer_email
-       FROM bom_drafts d
-       JOIN users u ON u.id = d.created_by
-       LEFT JOIN users rv ON rv.id = d.reviewed_by
-       WHERE d.id = ?`,
-      [req.params.id]
-    );
-
-    if (!rows.length) return res.status(404).json({ success: false, error: 'Draft not found' });
-    const draft = rows[0];
-
-    // Security: only the owner can load their own draft
-    if (String(draft.created_by) !== String(userId)) {
-      return res.status(403).json({ success: false, error: 'Forbidden' });
-    }
-
-    const items = await queryDB(
-      `SELECT di.id, di.quantity, di.note,
-              p.id AS product_id, p.model, p.vendor,
-              p.product_category, p.sub_category, p.segment,
-              p.poe, p.wireless_standard, p.management_type,
-              p.tag_dc, p.tag_enterprise, p.tag_sme,
-              p.switch_role, p.switch_port_speed, p.notes AS product_notes
-       FROM bom_draft_items di
-       JOIN bom_products p ON p.id = di.product_id
-       WHERE di.draft_id = ?
-       ORDER BY di.id`,
-      [draft.id]
-    );
-
-    const enrichedItems = items.map(i => ({
-      ...i,
-      tag_dc:         Number(i.tag_dc),
-      tag_enterprise: Number(i.tag_enterprise),
-      tag_sme:        Number(i.tag_sme),
-      categoryKey:    getBomCategoryKey(i.product_category),
-    }));
-
-    res.json({ success: true, draft: { ...draft, items: enrichedItems } });
-  } catch (err) {
-    console.error('GET /api/bom/drafts/:id error:', err);
-    res.status(500).json({ success: false, error: err.message });
+// ─── POST import products (bulk upsert) ──────────────────────────────────────
+app.post('/api/bom/products/import', async (req, res) => {
+  const { products, vendor } = req.body;
+  if (!products || !products.length) {
+    return res.status(400).json({ success: false, error: 'No products provided.' });
   }
-});
-
-// POST /api/bom/drafts
-// Body: { userId, name, items: [{ product_id, quantity, note }] }
-// Creates a new draft or overwrites an existing draft with the same name for this user
-app.post('/api/bom/drafts', async (req, res) => {
-  const { userId, name, items } = req.body;
-  if (!userId || !name || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ success: false, error: 'userId, name, and items[] are required' });
-  }
-
   let conn;
   try {
     conn = await pool.getConnection();
-    await conn.beginTransaction();
-
-    // Check if a draft with same name already exists for this user
-    const existing = await conn.query(
-      'SELECT id FROM bom_drafts WHERE name = ? AND created_by = ? AND status = "draft"',
-      [name, userId]
-    );
-
-    let draftId;
-    if (existing.length) {
-      draftId = Number(existing[0].id);
-      await conn.query('UPDATE bom_drafts SET updated_at = NOW() WHERE id = ?', [draftId]);
-      await conn.query('DELETE FROM bom_draft_items WHERE draft_id = ?', [draftId]);
-    } else {
-      const result = await conn.query(
-        'INSERT INTO bom_drafts (name, created_by, status) VALUES (?, ?, "draft")',
-        [name, userId]
-      );
-      draftId = Number(result.insertId);
-    }
-
-    for (const item of items) {
-      await conn.query(
-        'INSERT INTO bom_draft_items (draft_id, product_id, quantity, note) VALUES (?, ?, ?, ?)',
-        [draftId, item.product_id, item.quantity || 1, item.note || null]
-      );
-    }
-
-    await conn.commit();
-    res.json({ success: true, draft_id: draftId });
+    const sql = `
+      INSERT INTO bom_products 
+        (model, vendor, segment, product_category, sub_category, wireless_standard, deployment, management_type, poe, tag_dc, tag_enterprise, tag_sme, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        segment = VALUES(segment),
+        product_category = VALUES(product_category),
+        sub_category = VALUES(sub_category),
+        wireless_standard = VALUES(wireless_standard),
+        deployment = VALUES(deployment),
+        management_type = VALUES(management_type),
+        poe = VALUES(poe),
+        tag_dc = VALUES(tag_dc),
+        tag_enterprise = VALUES(tag_enterprise),
+        tag_sme = VALUES(tag_sme),
+        notes = VALUES(notes)
+    `;
+    const values = products.map(p => [
+      p.model,
+      vendor || p.vendor || 'ruijie',
+      p.segment || '',
+      p.product_category || '',
+      p.sub_category || '',
+      p.wireless_standard || '',
+      p.deployment || '',
+      p.management_type || '',
+      p.poe || '',
+      p.tag_dc ? 1 : 0,
+      p.tag_enterprise ? 1 : 0,
+      p.tag_sme ? 1 : 0,
+      p.notes || '',
+    ]);
+    const result = await conn.batch(sql, values);
+    res.json({ success: true, count: result.affectedRows });
   } catch (err) {
-    if (conn) await conn.rollback();
-    console.error('POST /api/bom/drafts error:', err);
+    console.error('BOM Import error:', err);
     res.status(500).json({ success: false, error: err.message });
   } finally {
     if (conn) conn.release();
   }
 });
 
-// DELETE /api/bom/drafts/:id
-// Body: { userId, userRole }
-app.delete('/api/bom/drafts/:id', async (req, res) => {
-  const { userId, userRole } = req.body;
-  if (!userId) return res.status(400).json({ success: false, error: 'userId is required' });
-
+// ─── DELETE a product ─────────────────────────────────────────────────────────
+app.delete('/api/bom/products/:id', async (req, res) => {
   try {
-    const rows = await queryDB('SELECT id, created_by FROM bom_drafts WHERE id = ?', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ success: false, error: 'Not found' });
-
-    if (String(rows[0].created_by) !== String(userId) && userRole !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Forbidden' });
-    }
-
-    await queryDB('DELETE FROM bom_drafts WHERE id = ?', [req.params.id]);
-    res.json({ success: true, message: 'Draft deleted' });
+    await queryDB('DELETE FROM bom_products WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
   } catch (err) {
-    console.error('DELETE /api/bom/drafts/:id error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ================================================================
-// FORWARD TO FINANCE
-// ================================================================
-
-// POST /api/bom/drafts/:id/forward
-// Body: { userId, finance_note }
-app.post('/api/bom/drafts/:id/forward', async (req, res) => {
-  const { userId, finance_note } = req.body;
-  if (!userId) return res.status(400).json({ success: false, error: 'userId is required' });
-
+// ─── GET all BOM drafts ───────────────────────────────────────────────────────
+app.get('/api/bom/drafts', async (req, res) => {
   try {
-    const rows = await queryDB(
-      'SELECT id, created_by, status FROM bom_drafts WHERE id = ?',
-      [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ success: false, error: 'Draft not found' });
-    if (String(rows[0].created_by) !== String(userId)) {
-      return res.status(403).json({ success: false, error: 'Forbidden' });
-    }
-    if (rows[0].status !== 'draft') {
-      return res.status(400).json({ success: false, error: 'Only drafts can be forwarded' });
-    }
-
-    await queryDB(
-      `UPDATE bom_drafts
-       SET status = 'forwarded', forwarded_at = NOW(), finance_note = ?
-       WHERE id = ?`,
-      [finance_note || null, req.params.id]
-    );
-
-    res.json({ success: true, message: 'Purchase order forwarded to Finance.' });
-  } catch (err) {
-    console.error('POST /api/bom/drafts/:id/forward error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================================================================
-// PURCHASE ORDERS  (Finance + Admin view)
-// ================================================================
-
-// GET /api/bom/purchase-orders?userRole=admin  (or finance)
-// Returns all forwarded/approved/rejected POs with full creator info
-app.get('/api/bom/purchase-orders', async (req, res) => {
-  const { userRole, status } = req.query;
-
-  try {
-    let sql = `
-      SELECT d.*,
-             u.id     AS creator_id,
-             u.name   AS creator_name,
-             u.email  AS creator_email,
-             u.role   AS creator_role,
-             u.avatar AS creator_avatar,
-             rv.name  AS reviewer_name,
-             rv.email AS reviewer_email
+    const drafts = await queryDB(`
+      SELECT d.*, COUNT(di.id) AS item_count
       FROM bom_drafts d
-      JOIN users u ON u.id = d.created_by
-      LEFT JOIN users rv ON rv.id = d.reviewed_by
-      WHERE d.status != 'draft'
-    `;
-    const params = [];
-    if (status) { sql += ' AND d.status = ?'; params.push(status); }
-    sql += ' ORDER BY d.forwarded_at DESC';
+      LEFT JOIN bom_draft_items di ON di.draft_id = d.id
+      GROUP BY d.id
+      ORDER BY d.saved_at DESC
+    `);
+    res.json({ success: true, drafts });
+  } catch (err) {
+    console.error('BOM Drafts GET error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-    const pos = await queryDB(sql, params);
+// ─── GET single draft with items ─────────────────────────────────────────────
+app.get('/api/bom/drafts/:id', async (req, res) => {
+  try {
+    const [draft] = await queryDB('SELECT * FROM bom_drafts WHERE id = ?', [req.params.id]);
+    if (!draft) return res.status(404).json({ success: false, error: 'Draft not found' });
 
-    for (const po of pos) {
-      const cnt = await queryDB(
-        'SELECT COUNT(*) AS item_count, IFNULL(SUM(quantity),0) AS total_units FROM bom_draft_items WHERE draft_id = ?',
-        [po.id]
+    const items = await queryDB(`
+      SELECT di.*, bp.model, bp.vendor, bp.segment, bp.product_category, bp.sub_category, bp.poe, bp.wireless_standard, bp.notes
+      FROM bom_draft_items di
+      LEFT JOIN bom_products bp ON bp.id = di.product_id
+      WHERE di.draft_id = ?
+    `, [req.params.id]);
+
+    res.json({ success: true, draft, items });
+  } catch (err) {
+    console.error('BOM Draft load error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST create/update a draft (upsert) ─────────────────────────────────────
+app.post('/api/bom/drafts', async (req, res) => {
+  const { id, name, vendor, items, status, created_by } = req.body;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    let draftId = id;
+
+    if (id) {
+      // Update existing draft
+      await conn.query(
+        'UPDATE bom_drafts SET name = ?, vendor = ?, status = ?, saved_at = NOW() WHERE id = ?',
+        [name, vendor || 'ruijie', status || 'draft', id]
       );
-      po.item_count  = Number(cnt[0].item_count);
-      po.total_units = Number(cnt[0].total_units);
-    }
-
-    res.json({ success: true, purchase_orders: pos });
-  } catch (err) {
-    console.error('GET /api/bom/purchase-orders error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// GET /api/bom/purchase-orders/:id/items?userRole=admin
-// Returns all line items for a specific PO (for the expandable view)
-app.get('/api/bom/purchase-orders/:id/items', async (req, res) => {
-  const { userRole } = req.query;
-  try {
-    const items = await queryDB(
-      `SELECT di.id, di.quantity, di.note,
-              p.id AS product_id, p.model, p.vendor,
-              p.product_category, p.sub_category, p.segment,
-              p.poe, p.wireless_standard, p.management_type,
-              p.notes AS product_notes
-       FROM bom_draft_items di
-       JOIN bom_products p ON p.id = di.product_id
-       WHERE di.draft_id = ?
-       ORDER BY di.id`,
-      [req.params.id]
-    );
-
-    const enriched = items.map(i => ({
-      ...i,
-      categoryKey: getBomCategoryKey(i.product_category),
-    }));
-
-    res.json({ success: true, items: enriched });
-  } catch (err) {
-    console.error('GET /api/bom/purchase-orders/:id/items error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================================================================
-// ADMIN — Approve / Reject
-// ================================================================
-
-// PATCH /api/bom/purchase-orders/:id/approve
-// Body: { userId, userRole }  — admin only
-app.patch('/api/bom/purchase-orders/:id/approve', async (req, res) => {
-  const { userId, userRole } = req.body;
-  if (userRole !== 'admin') {
-    return res.status(403).json({ success: false, error: 'Admin access required' });
-  }
-
-  try {
-    const rows = await queryDB('SELECT id, status FROM bom_drafts WHERE id = ?', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ success: false, error: 'Not found' });
-    if (rows[0].status !== 'forwarded') {
-      return res.status(400).json({ success: false, error: 'Only forwarded POs can be approved' });
-    }
-
-    await queryDB(
-      `UPDATE bom_drafts
-       SET status = 'approved', reviewed_by = ?, reviewed_at = NOW()
-       WHERE id = ?`,
-      [userId, req.params.id]
-    );
-    res.json({ success: true, message: 'Purchase order approved.' });
-  } catch (err) {
-    console.error('PATCH /approve error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// PATCH /api/bom/purchase-orders/:id/reject
-// Body: { userId, userRole, reason }
-app.patch('/api/bom/purchase-orders/:id/reject', async (req, res) => {
-  const { userId, userRole, reason } = req.body;
-  if (userRole !== 'admin') {
-    return res.status(403).json({ success: false, error: 'Admin access required' });
-  }
-
-  try {
-    const rows = await queryDB('SELECT id, status FROM bom_drafts WHERE id = ?', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ success: false, error: 'Not found' });
-    if (rows[0].status !== 'forwarded') {
-      return res.status(400).json({ success: false, error: 'Only forwarded POs can be rejected' });
-    }
-
-    await queryDB(
-      `UPDATE bom_drafts
-       SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW(), reject_reason = ?
-       WHERE id = ?`,
-      [userId, reason || null, req.params.id]
-    );
-    res.json({ success: true, message: 'Purchase order rejected.' });
-  } catch (err) {
-    console.error('PATCH /reject error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ================================================================
-// CSV IMPORT  — Admin only
-// POST /api/bom/products/import
-// Accepts multipart/form-data with fields: "file" (CSV) and "vendor"
-// Uses your existing `upload` multer instance
-// ================================================================
-app.post('/api/bom/products/import', upload.single('file'), async (req, res) => {
-  const { userRole, vendor = 'ruijie' } = req.body;
-
-  if (!req.file) {
-    return res.status(400).json({ success: false, error: 'No file uploaded' });
-  }
-
-  try {
-    const csvText = fs.readFileSync(req.file.path, 'utf-8');
-    fs.unlinkSync(req.file.path); // clean up temp file
-
-    // Parse CSV manually (no extra library needed)
-    const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean);
-
-    if (lines.length < 2) {
-      return res.status(400).json({ success: false, error: 'CSV file appears to be empty or invalid' });
-    }
-
-    // ── Sundray: column-based format ──────────────────────────────
-    if (vendor === 'sundray') {
-      const SUNDRAY_SQL = `
-        INSERT INTO bom_products
-          (model, vendor, segment, product_category, sub_category, management_type, notes)
-        VALUES (?, 'sundray', 'Enterprise', ?, ?, 'Cloud-Managed', ?)
-        ON DUPLICATE KEY UPDATE
-          product_category = VALUES(product_category),
-          sub_category     = VALUES(sub_category),
-          management_type  = VALUES(management_type)
-      `;
-
-      // Sundray column map (0-indexed):
-      // 0=Access Points, 1=Switches, 2=Gateway and Controller, 3=Management Platform, 4=X-LINK
-      const colMap = [
-        { cat: 'Access Points',           sub: (model) => getSundrayAPSub(model) },
-        { cat: 'Switch',                  sub: (model) => getSundraySwitchSub(model) },
-        { cat: 'Gateway and Controller',  sub: (model) => getSundrayGWSub(model) },
-        { cat: 'Management Platform',     sub: () => 'Network Management Center' },
-        { cat: 'X-LINK',                  sub: (model) => getSundrayXLinkSub(model) },
-      ];
-
-      let inserted = 0, skipped = 0;
-      const seen = new Set();
-
-      // Data rows start at index 1 (row 0 is header)
-      for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
-        for (let c = 0; c < 5; c++) {
-          const model = cols[c] ? cols[c].trim() : '';
-          if (!model) continue;
-          if (seen.has(model)) continue;
-          seen.add(model);
-          const { cat, sub } = colMap[c];
-          try {
-            await queryDB(SUNDRAY_SQL, [model, cat, sub(model), null]);
-            inserted++;
-          } catch (e) {
-            console.warn(`Skipped Sundray "${model}":`, e.message);
-            skipped++;
-          }
-        }
-      }
-
-      return res.json({
-        success: true,
-        message: `Sundray import complete: ${inserted} products imported, ${skipped} skipped.`,
-        inserted, skipped,
-      });
-    }
-    // ── End Sundray branch ────────────────────────────────────────
-
-    // Parse header row (index 1) — Ruijie format
-    const headers = parseCSVLine(lines[1]);
-
-    const COL = {
-      model:     headers.indexOf('Product Model / Series'),
-      segment:   headers.indexOf('Segment'),
-      category:  headers.indexOf('Product Category'),
-      sub:       headers.indexOf('Sub-Category'),
-      wifi:      headers.indexOf('Wireless Standard'),
-      deploy:    headers.indexOf('Deployment / Mounting'),
-      mgmt:      headers.indexOf('Management Type'),
-      poe:       headers.indexOf('PoE'),
-      tagDC:     headers.indexOf('Data Center Tag'),
-      tagEnt:    headers.indexOf('Enterprise Tag'),
-      tagSME:    headers.indexOf('SME Tag'),
-      role:      headers.indexOf('Switch Role / Tier'),
-      speed:     headers.indexOf('Switch Port Speed'),
-      notes:     headers.indexOf('Notes / URL'),
-    };
-
-    const sql = `
-      INSERT INTO bom_products
-        (model, vendor, segment, product_category, sub_category,
-         wireless_standard, deployment, management_type, poe,
-         tag_dc, tag_enterprise, tag_sme,
-         switch_role, switch_port_speed, notes)
-      VALUES (?, 'ruijie', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        segment           = VALUES(segment),
-        product_category  = VALUES(product_category),
-        sub_category      = VALUES(sub_category),
-        wireless_standard = VALUES(wireless_standard),
-        deployment        = VALUES(deployment),
-        management_type   = VALUES(management_type),
-        poe               = VALUES(poe),
-        tag_dc            = VALUES(tag_dc),
-        tag_enterprise    = VALUES(tag_enterprise),
-        tag_sme           = VALUES(tag_sme),
-        switch_role       = VALUES(switch_role),
-        switch_port_speed = VALUES(switch_port_speed),
-        notes             = VALUES(notes)
-    `;
-
-    const clean = (v) => {
-      if (!v) return null;
-      const t = v.trim();
-      return (t === '-' || t === 'N/A' || t === '') ? null : t;
-    };
-    const checkmark = (v) => (v && v.trim() === '✓') ? 1 : 0;
-
-    let inserted = 0, skipped = 0;
-    const seen = new Set();
-
-    // Data starts at line index 2
-    for (let i = 2; i < lines.length; i++) {
-      const cols = parseCSVLine(lines[i]);
-      const model = clean(cols[COL.model]);
-      if (!model || model === 'Product Model / Series') continue;
-      if (seen.has(model)) continue;
-      seen.add(model);
-
-      try {
-        await queryDB(sql, [
-          model,
-          clean(cols[COL.segment]),
-          clean(cols[COL.category]),
-          clean(cols[COL.sub]),
-          clean(cols[COL.wifi]),
-          clean(cols[COL.deploy]),
-          clean(cols[COL.mgmt]),
-          clean(cols[COL.poe]),
-          checkmark(cols[COL.tagDC]),
-          checkmark(cols[COL.tagEnt]),
-          checkmark(cols[COL.tagSME]),
-          clean(cols[COL.role]),
-          clean(cols[COL.speed]),
-          clean(cols[COL.notes]),
-        ]);
-        inserted++;
-      } catch (e) {
-        console.warn(`Skipped row "${model}":`, e.message);
-        skipped++;
-      }
-    }
-
-    res.json({
-      success: true,
-      message: `Import complete: ${inserted} products imported, ${skipped} skipped.`,
-      inserted,
-      skipped,
-    });
-
-  } catch (err) {
-    console.error('CSV import error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ── Sundray subcategory helpers ──────────────────────────────────
-function getSundrayAPSub(model) {
-  const m = model.toUpperCase();
-  if (m.startsWith('S5') || m.startsWith('S8') || m.startsWith('S3') || m.startsWith('S582') || m.startsWith('S372') || m.startsWith('S853') || m.startsWith('S822')) return 'Scenario AP';
-  if (m.includes('IOT')) return 'IoT Fusion AP';
-  if (m.includes('ILINK')) return 'Inwall AP';
-  if (m.startsWith('NAP')) return 'Ceiling AP';
-  return 'Access Point';
-}
-function getSundraySwitchSub(model) {
-  const m = model.toUpperCase();
-  if (m.startsWith('TS'))  return 'Chassis Switches';
-  if (m.startsWith('RS68')) return 'V-Sec Distribution Switch';
-  if (m.startsWith('RS63')) return 'V-Sec Distribution Switch';
-  if (m.startsWith('RS53') || m.startsWith('RS52')) return 'V-Sec PoE Switch';
-  if (m.startsWith('RS33') || m.startsWith('RS32')) return 'V-Sec Access Switch';
-  if (m.startsWith('NS'))  return 'Neuron Sense AI Switch';
-  if (m.startsWith('HS'))  return 'Hummer Switch';
-  return 'Switch';
-}
-function getSundrayGWSub(model) {
-  const m = model.toUpperCase();
-  if (m.startsWith('NAC'))  return 'Network Access Controller';
-  if (m.startsWith('SAC'))  return 'Network Access Controller';
-  if (m.startsWith('SFG') || m.startsWith('SIG')) return 'Gateway';
-  return 'Gateway and Controller';
-}
-function getSundrayXLinkSub(model) {
-  const m = model.toUpperCase();
-  if (m.startsWith('XMG'))  return 'X-LINK Gateway';
-  if (m.startsWith('XAP') || m.startsWith('RL-XRT')) return 'X-LINK Access Points';
-  if (m.startsWith('XS') || m.startsWith('RL-XS')) return 'X-LINK Switches';
-  return 'X-LINK';
-}
-
-// Helper: parse one CSV line respecting quoted commas
-function parseCSVLine(line) {
-  const result = [];
-  let cur = '', inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === ',' && !inQuotes) {
-      result.push(cur);
-      cur = '';
+      // Clear old items
+      await conn.query('DELETE FROM bom_draft_items WHERE draft_id = ?', [id]);
     } else {
-      cur += ch;
+      // Create new draft
+      const result = await conn.query(
+        'INSERT INTO bom_drafts (name, vendor, status, created_by, saved_at) VALUES (?, ?, ?, ?, NOW())',
+        [name, vendor || 'ruijie', status || 'draft', created_by || null]
+      );
+      draftId = result.insertId.toString();
     }
-  }
-  result.push(cur);
-  return result;
-}
 
-// ================================================================
-// END OF BOM MODULE
-// ================================================================
+    // Insert items
+    if (items && items.length > 0) {
+      const itemSql = 'INSERT INTO bom_draft_items (draft_id, product_id, model, vendor, qty, note) VALUES (?, ?, ?, ?, ?, ?)';
+      const itemValues = items.map(i => [draftId, i.product_id || null, i.model, i.vendor || vendor, i.qty || 1, i.note || '']);
+      await conn.batch(itemSql, itemValues);
+    }
+
+    res.json({ success: true, id: draftId });
+  } catch (err) {
+    console.error('BOM Draft save error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ─── PUT forward draft to finance ────────────────────────────────────────────
+app.put('/api/bom/drafts/:id/forward', async (req, res) => {
+  const { recipient, note } = req.body;
+  try {
+    await queryDB(
+      'UPDATE bom_drafts SET status = ?, forwarded_to = ?, forward_note = ?, forwarded_at = NOW() WHERE id = ?',
+      ['forwarded', recipient, note || '', req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('BOM Forward error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── DELETE a draft ───────────────────────────────────────────────────────────
+app.delete('/api/bom/drafts/:id', async (req, res) => {
+  try {
+    await queryDB('DELETE FROM bom_draft_items WHERE draft_id = ?', [req.params.id]);
+    await queryDB('DELETE FROM bom_drafts WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('BOM Draft delete error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
   // SERVER
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
 
