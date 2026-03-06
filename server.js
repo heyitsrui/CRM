@@ -1,4 +1,4 @@
- require("dotenv").config();
+require("dotenv").config();
   const express = require("express");
   const nodemailer = require("nodemailer");
   const otpGenerator = require("otp-generator");
@@ -1345,7 +1345,11 @@ app.get('/api/bom/drafts/:id', async (req, res) => {
     if (!draft) return res.status(404).json({ success: false, error: 'Draft not found' });
 
     const items = await queryDB(`
-      SELECT di.*, bp.model, bp.vendor, bp.segment, bp.product_category, bp.sub_category, bp.poe, bp.wireless_standard, bp.notes
+      SELECT di.id, di.draft_id, di.qty,
+        di.note,
+        COALESCE(bp.model, di.model) AS model,
+        COALESCE(bp.vendor, di.vendor) AS vendor,
+        bp.segment, bp.product_category, bp.sub_category, bp.poe, bp.wireless_standard
       FROM bom_draft_items di
       LEFT JOIN bom_products bp ON bp.id = di.product_id
       WHERE di.draft_id = ?
@@ -1400,17 +1404,31 @@ app.post('/api/bom/drafts', async (req, res) => {
   }
 });
 
-// ─── PUT forward draft to finance ────────────────────────────────────────────
+// ─── PUT move draft to Pricing ───────────────────────────────────────────────
 app.put('/api/bom/drafts/:id/forward', async (req, res) => {
-  const { recipient, note } = req.body;
   try {
     await queryDB(
-      'UPDATE bom_drafts SET status = ?, forwarded_to = ?, forward_note = ?, forwarded_at = NOW() WHERE id = ?',
-      ['forwarded', recipient, note || '', req.params.id]
+      'UPDATE bom_drafts SET status = ?, forwarded_at = NOW() WHERE id = ?',
+      ['pricing', req.params.id]
     );
     res.json({ success: true });
   } catch (err) {
-    console.error('BOM Forward error:', err);
+    console.error('BOM Move to Pricing error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── PUT update draft status (move back to draft) ─────────────────────────────
+app.put('/api/bom/drafts/:id/status', async (req, res) => {
+  const { status } = req.body;
+  if (!['draft', 'pricing'].includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid status.' });
+  }
+  try {
+    await queryDB('UPDATE bom_drafts SET status = ? WHERE id = ?', [status, req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('BOM Status update error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1430,6 +1448,3 @@ app.delete('/api/bom/drafts/:id', async (req, res) => {
   // SERVER
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
