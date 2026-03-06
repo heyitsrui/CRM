@@ -1118,6 +1118,198 @@ app.post("/generate-document", (req, res) => {
 
 });
 
+// =============================================================================
+// BOM API ROUTES — paste these into your server.js before the app.listen() line
+// =============================================================================
+
+// ─── GET all products (filterable by vendor) ─────────────────────────────────
+app.get('/api/bom/products', async (req, res) => {
+  try {
+    const { vendor } = req.query;
+    let sql = 'SELECT * FROM bom_products';
+    const params = [];
+    if (vendor) {
+      sql += ' WHERE vendor = ?';
+      params.push(vendor);
+    }
+    sql += ' ORDER BY segment, product_category, sub_category, model';
+    const rows = await queryDB(sql, params);
+    res.json({ success: true, products: rows });
+  } catch (err) {
+    console.error('BOM Products GET error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST import products (bulk upsert) ──────────────────────────────────────
+app.post('/api/bom/products/import', async (req, res) => {
+  const { products, vendor } = req.body;
+  if (!products || !products.length) {
+    return res.status(400).json({ success: false, error: 'No products provided.' });
+  }
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const sql = `
+      INSERT INTO bom_products 
+        (model, vendor, segment, product_category, sub_category, wireless_standard, deployment, management_type, poe, tag_dc, tag_enterprise, tag_sme, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        segment = VALUES(segment),
+        product_category = VALUES(product_category),
+        sub_category = VALUES(sub_category),
+        wireless_standard = VALUES(wireless_standard),
+        deployment = VALUES(deployment),
+        management_type = VALUES(management_type),
+        poe = VALUES(poe),
+        tag_dc = VALUES(tag_dc),
+        tag_enterprise = VALUES(tag_enterprise),
+        tag_sme = VALUES(tag_sme),
+        notes = VALUES(notes)
+    `;
+    const values = products.map(p => [
+      p.model,
+      vendor || p.vendor || 'ruijie',
+      p.segment || '',
+      p.product_category || '',
+      p.sub_category || '',
+      p.wireless_standard || '',
+      p.deployment || '',
+      p.management_type || '',
+      p.poe || '',
+      p.tag_dc ? 1 : 0,
+      p.tag_enterprise ? 1 : 0,
+      p.tag_sme ? 1 : 0,
+      p.notes || '',
+    ]);
+    const result = await conn.batch(sql, values);
+    res.json({ success: true, count: result.affectedRows });
+  } catch (err) {
+    console.error('BOM Import error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ─── DELETE a product ─────────────────────────────────────────────────────────
+app.delete('/api/bom/products/:id', async (req, res) => {
+  try {
+    await queryDB('DELETE FROM bom_products WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── GET all BOM drafts ───────────────────────────────────────────────────────
+app.get('/api/bom/drafts', async (req, res) => {
+  try {
+    const drafts = await queryDB(`
+      SELECT d.*, COUNT(di.id) AS item_count
+      FROM bom_drafts d
+      LEFT JOIN bom_draft_items di ON di.draft_id = d.id
+      GROUP BY d.id
+      ORDER BY d.saved_at DESC
+    `);
+    res.json({ success: true, drafts });
+  } catch (err) {
+    console.error('BOM Drafts GET error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── GET single draft with items ─────────────────────────────────────────────
+app.get('/api/bom/drafts/:id', async (req, res) => {
+  try {
+    const [draft] = await queryDB('SELECT * FROM bom_drafts WHERE id = ?', [req.params.id]);
+    if (!draft) return res.status(404).json({ success: false, error: 'Draft not found' });
+
+    const items = await queryDB(`
+      SELECT di.*, bp.model, bp.vendor, bp.segment, bp.product_category, bp.sub_category, bp.poe, bp.wireless_standard, bp.notes
+      FROM bom_draft_items di
+      LEFT JOIN bom_products bp ON bp.id = di.product_id
+      WHERE di.draft_id = ?
+    `, [req.params.id]);
+
+    res.json({ success: true, draft, items });
+  } catch (err) {
+    console.error('BOM Draft load error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST create/update a draft (upsert) ─────────────────────────────────────
+app.post('/api/bom/drafts', async (req, res) => {
+  const { id, name, vendor, items, status, created_by } = req.body;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    let draftId = id;
+
+    if (id) {
+      // Update existing draft
+      await conn.query(
+        'UPDATE bom_drafts SET name = ?, vendor = ?, status = ?, saved_at = NOW() WHERE id = ?',
+        [name, vendor || 'ruijie', status || 'draft', id]
+      );
+      // Clear old items
+      await conn.query('DELETE FROM bom_draft_items WHERE draft_id = ?', [id]);
+    } else {
+      // Create new draft
+      const result = await conn.query(
+        'INSERT INTO bom_drafts (name, vendor, status, created_by, saved_at) VALUES (?, ?, ?, ?, NOW())',
+        [name, vendor || 'ruijie', status || 'draft', created_by || null]
+      );
+      draftId = result.insertId.toString();
+    }
+
+    // Insert items
+    if (items && items.length > 0) {
+      const itemSql = 'INSERT INTO bom_draft_items (draft_id, product_id, model, vendor, qty, note) VALUES (?, ?, ?, ?, ?, ?)';
+      const itemValues = items.map(i => [draftId, i.product_id || null, i.model, i.vendor || vendor, i.qty || 1, i.note || '']);
+      await conn.batch(itemSql, itemValues);
+    }
+
+    res.json({ success: true, id: draftId });
+  } catch (err) {
+    console.error('BOM Draft save error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ─── PUT forward draft to finance ────────────────────────────────────────────
+app.put('/api/bom/drafts/:id/forward', async (req, res) => {
+  const { recipient, note } = req.body;
+  try {
+    await queryDB(
+      'UPDATE bom_drafts SET status = ?, forwarded_to = ?, forward_note = ?, forwarded_at = NOW() WHERE id = ?',
+      ['forwarded', recipient, note || '', req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('BOM Forward error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── DELETE a draft ───────────────────────────────────────────────────────────
+app.delete('/api/bom/drafts/:id', async (req, res) => {
+  try {
+    await queryDB('DELETE FROM bom_draft_items WHERE draft_id = ?', [req.params.id]);
+    await queryDB('DELETE FROM bom_drafts WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('BOM Draft delete error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
   // SERVER
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
