@@ -13,6 +13,7 @@ import CPass from "./c-pass";
 import Finance from "./finance";
 import TimeTree from "./timetree";
 import Sheets from "./project-sheets";
+import BOM from "./bom";
 
 // --- Chart.js Imports ---
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -387,4 +388,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
 
